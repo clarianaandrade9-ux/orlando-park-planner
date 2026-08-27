@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Magic Trip Dashboard - Planejador de viagem aos parques Disney e Universal Orlando." />
+<title>✨ Magic Trip Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
+<!--
+====================================================================
+  MAGIC TRIP DASHBOARD (HTML+CSS+JS puro). localStorage. Sem backend.
+  INTEGRAÇÕES (todas gratuitas e sem API key):
+   • Filas AO VIVO: Queue-Times.com ("Powered by Queue-Times.com" obrigatório)
+   • Mapa real: Google Maps embed via iframe (output=embed, sem key)
+   • Clima: Open-Meteo (sem key, CORS liberado)
+  Sem scraping.
+====================================================================
+-->
+<style>
+:root{
+  --disney-blue:#1f6feb;--disney-gold:#e3b23c;--universal-purple:#6d3fb0;--universal-dark:#1b1f3b;
+  --bg:#eef2f8;--bg-elev:#ffffff;--bg-soft:#f5f7fb;--text:#1a2233;--text-soft:#5a6b85;--border:#e2e8f2;
+  --primary:#1f6feb;--primary-contrast:#ffffff;--shadow:0 6px 24px rgba(26,34,51,.08);--shadow-sm:0 2px 8px rgba(26,34,51,.06);
+  --radius:16px;--radius-sm:10px;--green:#22a06b;--yellow:#e6a817;--orange:#e8722c;--red:#e0384f;--sidebar-w:250px;
+}
+[data-theme="dark"]{
+  --bg:#0e1220;--bg-elev:#171c2e;--bg-soft:#1e2438;--text:#e7ecf5;--text-soft:#9aa7c2;--border:#2a3350;
+  --primary:#4d8dff;--primary-contrast:#0e1220;--shadow:0 6px 24px rgba(0,0,0,.4);--shadow-sm:0 2px 8px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.45;transition:background .25s,color .25s;-webkit-font-smoothing:antialiased}
+a{color:var(--primary);text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--primary);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:20px}
+code{background:var(--bg-soft);padding:1px 5px;border-radius:5px;font-size:.85em}
+.app{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:var(--bg-elev);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50;transition:transform .25s}
+.sidebar__brand{padding:18px 20px;font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.sidebar__brand small{display:block;font-weight:500;font-size:.7rem;color:var(--text-soft)}
+.nav{flex:1;overflow-y:auto;padding:10px 10px 90px}
+.nav__item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:none;background:transparent;color:var(--text-soft);padding:11px 14px;border-radius:12px;font-size:.92rem;font-weight:600;margin-bottom:3px;transition:.15s}
+.nav__item:hover{background:var(--bg-soft);color:var(--text)}
+.nav__item.active{background:var(--primary);color:var(--primary-contrast);box-shadow:var(--shadow-sm)}
+.nav__item .ico{font-size:1.15rem;width:22px;text-align:center}
+.main{flex:1;margin-left:var(--sidebar-w);display:flex;flex-direction:column;min-width:0}
+.topbar{position:sticky;top:0;z-index:40;background:var(--bg-elev);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:14px}
+.topbar__title{font-size:1.25rem;font-weight:800;flex-shrink:0}
+.hamburger{display:none;background:var(--bg-soft);border:1px solid var(--border);border-radius:10px;padding:8px 11px;font-size:1.1rem;color:var(--text)}
+.search-global{flex:1;max-width:420px;position:relative}
+.search-global input{width:100%;padding:9px 14px 9px 38px;border-radius:30px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);font-size:.9rem}
+.search-global::before{content:"🔎";position:absolute;left:13px;top:50%;transform:translateY(-50%);opacity:.6}
+.topbar__actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.icon-btn{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:8px 11px;font-size:1rem;color:var(--text)}
+.content{padding:22px;max-width:1200px;width:100%;margin:0 auto}
+.page{display:none;animation:fade .3s ease}.page.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.page-head h2{font-size:1.4rem;font-weight:800}.page-head p{color:var(--text-soft);font-size:.9rem}
+.btn{border:none;border-radius:12px;padding:10px 16px;font-weight:700;font-size:.88rem;background:var(--bg-soft);color:var(--text);border:1px solid var(--border);transition:.15s;display:inline-flex;align-items:center;gap:7px}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.btn--primary{background:var(--primary);color:var(--primary-contrast);border-color:transparent}
+.btn--ghost{background:transparent}.btn--danger{background:var(--red);color:#fff;border-color:transparent}
+.btn--sm{padding:6px 11px;font-size:.78rem;border-radius:9px}.btn--block{width:100%;justify-content:center}
+.grid{display:grid;gap:16px}.grid--cards{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}.grid--stats{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+.card{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow-sm);transition:.2s}
+.card:hover{box-shadow:var(--shadow)}.card h3{font-size:1.02rem;margin-bottom:6px}.card .muted{color:var(--text-soft);font-size:.83rem}
+.stat{position:relative;overflow:hidden}.stat .stat__value{font-size:2rem;font-weight:800;line-height:1}.stat .stat__label{color:var(--text-soft);font-size:.82rem;margin-top:6px;display:flex;align-items:center;gap:6px}.stat .stat__ico{font-size:1.6rem;position:absolute;top:14px;right:16px;opacity:.5}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:700;border:1px solid var(--border);background:var(--bg-soft)}
+.badge--disney{background:rgba(31,111,235,.14);color:var(--disney-blue);border-color:transparent}
+.badge--universal{background:rgba(109,63,176,.16);color:var(--universal-purple);border-color:transparent}
+.badge.q-green{background:rgba(34,160,107,.16);color:var(--green);border-color:transparent}
+.badge.q-yellow{background:rgba(230,168,23,.18);color:#b07d00;border-color:transparent}
+.badge.q-orange{background:rgba(232,114,44,.16);color:var(--orange);border-color:transparent}
+.badge.q-red{background:rgba(224,56,79,.16);color:var(--red);border-color:transparent}
+.badge--live{background:rgba(34,160,107,.16);color:var(--green);border-color:transparent}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.chip{padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--bg-elev);font-size:.8rem;font-weight:600;color:var(--text-soft)}
+.chip.active{background:var(--primary);color:var(--primary-contrast);border-color:transparent}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.toolbar input,.toolbar select{padding:9px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-elev);color:var(--text);font-size:.86rem}
+.card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.tiny{font-size:.75rem;color:var(--text-soft)}
+.placeholder-img{height:120px;border-radius:12px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;font-size:2.6rem;color:#fff;background:linear-gradient(135deg,var(--disney-blue),var(--universal-purple))}
+.progress{height:10px;border-radius:20px;background:var(--bg-soft);overflow:hidden;border:1px solid var(--border)}
+.progress__bar{height:100%;background:linear-gradient(90deg,var(--green),#4bd39a);transition:width .4s}
+.timeline{list-style:none;position:relative;padding-left:8px}
+.tl-item{background:var(--bg-elev);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;cursor:grab;transition:.15s}
+.tl-item.dragging{opacity:.4}.tl-item.drag-over{border-color:var(--primary);border-style:dashed}
+.tl-item.done{border-left:5px solid var(--green);background:rgba(34,160,107,.06)}
+.tl-time{font-weight:800;min-width:60px;color:var(--primary)}.tl-body{flex:1;min-width:0}.tl-body h4{font-size:.98rem}.tl-actions{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.map-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.zone{border-radius:14px;padding:14px;color:#fff;min-height:120px;box-shadow:var(--shadow-sm)}.zone h4{font-size:.95rem;margin-bottom:8px}
+.marker{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.22);padding:4px 9px;border-radius:20px;font-size:.74rem;margin:3px 3px 0 0;border:none;color:#fff;cursor:pointer}.marker:hover{background:rgba(255,255,255,.4)}
+.gmap-wrap{position:relative;width:100%;padding-bottom:56.25%;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.gmap-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.modal-overlay{position:fixed;inset:0;background:rgba(10,14,25,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg-elev);border-radius:18px;max-width:520px;width:100%;max-height:90vh;overflow:auto;box-shadow:var(--shadow);border:1px solid var(--border)}
+.modal__head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}.modal__head h3{font-size:1.1rem}.modal__body{padding:20px}
+.form-row{margin-bottom:14px}.form-row label{display:block;font-size:.8rem;font-weight:700;margin-bottom:6px;color:var(--text-soft)}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text);font-size:.9rem;font-family:inherit}
+.form-row textarea{min-height:80px;resize:vertical}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg-elev);padding:12px 20px;border-radius:30px;font-size:.85rem;font-weight:600;z-index:200;opacity:0;pointer-events:none;transition:.3s;box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+.notice{background:rgba(230,168,23,.14);border:1px solid rgba(230,168,23,.4);color:#8a6400;border-radius:12px;padding:11px 14px;font-size:.82rem;margin-bottom:16px;display:flex;gap:8px;align-items:flex-start}
+[data-theme="dark"] .notice{color:#f0c95a}.notice a{font-weight:700;text-decoration:underline}
+.attrib{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;color:var(--text-soft);background:var(--bg-soft);border:1px solid var(--border);border-radius:20px;padding:5px 12px}.attrib a{font-weight:700}
+.gallery{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.photo-card img{width:100%;height:130px;object-fit:cover;border-radius:12px 12px 0 0;display:block}
+.chart-box{display:flex;flex-direction:column;gap:6px}
+.bar-row{display:flex;align-items:center;gap:10px;font-size:.8rem}.bar-row .bar-label{min-width:120px;color:var(--text-soft)}
+.bar-track{flex:1;height:16px;background:var(--bg-soft);border-radius:10px;overflow:hidden;border:1px solid var(--border)}.bar-fill{height:100%;border-radius:10px;transition:width .5s}
+.empty{text-align:center;padding:40px 20px;color:var(--text-soft)}.empty .big{font-size:2.4rem;display:block;margin-bottom:8px}
+.countdown{background:linear-gradient(135deg,var(--disney-blue),var(--universal-purple));color:#fff;border-radius:var(--radius);padding:20px 22px;margin-bottom:16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.countdown::after{content:"✨";position:absolute;right:18px;top:12px;font-size:2.4rem;opacity:.5}
+.countdown h3{font-size:1.05rem;margin-bottom:4px;font-weight:800}.countdown .cd-sub{font-size:.82rem;opacity:.9;margin-bottom:14px}
+.cd-timer{display:flex;gap:12px;flex-wrap:wrap}.cd-box{background:rgba(255,255,255,.18);border-radius:14px;padding:12px 16px;text-align:center;min-width:74px}
+.cd-box .cd-num{font-size:2rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}.cd-box .cd-lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;opacity:.9;margin-top:6px}.cd-msg{font-size:1.3rem;font-weight:800;margin-top:6px}
+@media(max-width:520px){.cd-box{min-width:62px;padding:10px 12px}.cd-box .cd-num{font-size:1.5rem}}
+/* WEATHER */
+.wx-card{background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.wx-now{display:flex;align-items:center;gap:14px}
+.wx-ico{font-size:3rem;line-height:1}
+.wx-temp{font-size:2.4rem;font-weight:800;line-height:1}
+.wx-meta{font-size:.8rem;opacity:.95}
+.wx-forecast{display:flex;gap:8px;margin-top:14px;overflow-x:auto;padding-bottom:4px}
+.wx-day{background:rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;text-align:center;min-width:70px;flex-shrink:0}
+.wx-day .d{font-size:.7rem;text-transform:uppercase;opacity:.9}.wx-day .i{font-size:1.5rem;margin:4px 0}.wx-day .t{font-size:.78rem;font-weight:700}
+.wx-day .r{font-size:.66rem;opacity:.9;margin-top:2px}
+.bottom-nav{display:none}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0);box-shadow:var(--shadow)}
+  .main{margin-left:0}.hamburger{display:inline-flex}.content{padding:16px;padding-bottom:90px}.form-grid{grid-template-columns:1fr}
+  .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:60;background:var(--bg-elev);border-top:1px solid var(--border);justify-content:space-around;padding:6px 4px;overflow-x:auto}
+  .bottom-nav button{background:transparent;border:none;color:var(--text-soft);font-size:1.35rem;padding:8px 10px;border-radius:12px;flex-shrink:0}
+  .bottom-nav button.active{color:var(--primary);background:var(--bg-soft)}
+  .sidebar-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:45;display:none}.sidebar-backdrop.show{display:block}
+}
+@media(min-width:901px){.sidebar-backdrop{display:none!important}}
+@media(max-width:520px){.topbar__title{display:none}.stat .stat__value{font-size:1.6rem}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+    <div class="sidebar__brand"><span>✨</span><div>Magic Trip<small>Dashboard de Viagem</small></div></div>
+    <nav class="nav" id="navMenu"></nav>
+  </aside>
+  <div class="sidebar-backdrop" id="backdrop"></div>
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Abrir menu">☰</button>
+      <span class="topbar__title" id="pageTitle">Dashboard</span>
+      <div class="search-global"><input type="search" id="globalSearch" placeholder="Buscar atrações, personagens, restaurantes, notas…" aria-label="Busca global" /></div>
+      <div class="topbar__actions"><button class="icon-btn" id="themeToggle" aria-label="Alternar tema" title="Modo claro/escuro">🌙</button></div>
+    </header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+<nav class="bottom-nav" id="bottomNav" aria-label="Navegação rápida"></nav>
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true">
+  <div class="modal"><div class="modal__head"><h3 id="modalTitle">Título</h3><button class="icon-btn" id="modalClose" aria-label="Fechar">✕</button></div><div class="modal__body" id="modalBody"></div></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* 3. SEED DATA — parques com lat/lng (Google Maps + Open-Meteo) */
+const SEED = {};
+SEED.parks = [
+  {id:'mk', name:'Magic Kingdom', group:'Disney', icon:'🏰', color:'#1f6feb', hours:'09:00 - 22:00', qtId:6, lat:28.4177, lng:-81.5812, zones:['Main Street','Adventureland','Frontierland','Liberty Square','Fantasyland','Tomorrowland']},
+  {id:'epcot', name:'EPCOT', group:'Disney', icon:'🌐', color:'#3457d5', hours:'09:00 - 21:00', qtId:5, lat:28.3747, lng:-81.5494, zones:['World Celebration','World Discovery','World Nature','World Showcase']},
+  {id:'hs', name:'Hollywood Studios', group:'Disney', icon:'🎬', color:'#c8102e', hours:'09:00 - 21:00', qtId:7, lat:28.3575, lng:-81.5583, zones:["Hollywood Blvd","Galaxy's Edge","Toy Story Land","Sunset Blvd","Echo Lake","Grand Avenue","Animation Courtyard"]},
+  {id:'ak', name:'Animal Kingdom', group:'Disney', icon:'🦁', color:'#2e8b57', hours:'08:00 - 20:00', qtId:8, lat:28.3587, lng:-81.5906, zones:['Discovery Island','Pandora','Africa','Asia','DinoLand']},
+  {id:'usf', name:'Universal Studios Florida', group:'Universal', icon:'🎥', color:'#6d3fb0', hours:'09:00 - 21:00', qtId:65, lat:28.4754, lng:-81.4681, zones:['Production Central','New York','San Francisco','Diagon Alley','World Expo','Springfield','Hollywood']},
+  {id:'ioa', name:'Islands of Adventure', group:'Universal', icon:'🦖', color:'#4b2e83', hours:'09:00 - 21:00', qtId:64, lat:28.4712, lng:-81.4708, zones:['Port of Entry','Marvel Super Hero Island','Toon Lagoon','Skull Island','Jurassic Park','Hogsmeade','Seuss Landing']},
+  {id:'epic', name:'Epic Universe', group:'Universal', icon:'🌌', color:'#1b1f3b', hours:'09:00 - 22:00', qtId:334, lat:28.4749, lng:-81.4419, zones:['Celestial Park','Super Nintendo World','Dark Universe','Isle of Berk','Wizarding World: Ministry of Magic']},
+  {id:'volcano', name:'Volcano Bay', group:'Universal', icon:'🌋', color:'#e8722c', hours:'10:00 - 18:00', qtId:331, lat:28.4620, lng:-81.4739, zones:['Wave Village','River Village','Rainforest Village']},
+];
+const A = (id,name,park,zone,cat,intensity,minH,wait,status,dur,pass)=>({id,name,park,zone,cat,intensity,minH,wait,status,dur,pass,priority:'media',note:'',fav:false,done:false,lastUpdated:'',live:false});
+SEED.attractions = [
+  A('space-mountain','Space Mountain','mk','Tomorrowland','Montanha-russa','Alta','112 cm',45,'aberta','3 min','Lightning Lane'),
+  A('tron','TRON Lightcycle Run','mk','Tomorrowland','Montanha-russa','Alta','122 cm',95,'aberta','2 min','Fila virtual'),
+  A('buzz-lightyear','Buzz Lightyear\'s Space Ranger Spin','mk','Tomorrowland','Dark ride','Baixa','—',30,'aberta','5 min','Lightning Lane'),
+  A('astro-orbiter','Astro Orbiter','mk','Tomorrowland','Aéreo','Baixa','—',20,'aberta','2 min','—'),
+  A('peoplemover','Tomorrowland Transit Authority PeopleMover','mk','Tomorrowland','Passeio','Baixa','—',15,'aberta','10 min','—'),
+  A('carousel-progress','Walt Disney\'s Carousel of Progress','mk','Tomorrowland','Show','Baixa','—',5,'aberta','21 min','—'),
+  A('big-thunder','Big Thunder Mountain Railroad','mk','Frontierland','Montanha-russa','Média','102 cm',35,'aberta','4 min','Lightning Lane'),
+  A('tianas-bayou','Tiana\'s Bayou Adventure','mk','Frontierland','Water ride','Média','102 cm',70,'aberta','11 min','Lightning Lane'),
+  A('tom-sawyer','Tom Sawyer Island','mk','Frontierland','Exploração','Baixa','—',5,'aberta','livre','—'),
+  A('country-bear','Country Bear Musical Jamboree','mk','Frontierland','Show','Baixa','—',10,'aberta','16 min','—'),
+  A('pirates','Pirates of the Caribbean','mk','Adventureland','Dark ride','Baixa','—',20,'aberta','8 min','Lightning Lane'),
+  A('jungle-cruise','Jungle Cruise','mk','Adventureland','Passeio','Baixa','—',45,'aberta','10 min','Lightning Lane'),
+  A('magic-carpets','The Magic Carpets of Aladdin','mk','Adventureland','Aéreo','Baixa','—',15,'aberta','2 min','—'),
+  A('tiki-room','Walt Disney\'s Enchanted Tiki Room','mk','Adventureland','Show','Baixa','—',10,'aberta','15 min','—'),
+  A('swiss-treehouse','Swiss Family Treehouse','mk','Adventureland','Exploração','Baixa','—',5,'aberta','livre','—'),
+  A('haunted-mansion','Haunted Mansion','mk','Liberty Square','Dark ride','Baixa','—',40,'aberta','9 min','Lightning Lane'),
+  A('hall-presidents','The Hall of Presidents','mk','Liberty Square','Show','Baixa','—',10,'aberta','23 min','—'),
+  A('liberty-riverboat','Liberty Square Riverboat','mk','Liberty Square','Passeio','Baixa','—',15,'aberta','17 min','—'),
+  A('seven-dwarfs','Seven Dwarfs Mine Train','mk','Fantasyland','Montanha-russa','Média','97 cm',75,'aberta','3 min','Lightning Lane'),
+  A('peter-pan','Peter Pan\'s Flight','mk','Fantasyland','Dark ride','Baixa','—',65,'aberta','3 min','Lightning Lane'),
+  A('its-small-world','it\'s a small world','mk','Fantasyland','Dark ride','Baixa','—',25,'aberta','11 min','Lightning Lane'),
+  A('winnie-pooh','The Many Adventures of Winnie the Pooh','mk','Fantasyland','Dark ride','Baixa','—',30,'aberta','4 min','Lightning Lane'),
+  A('mad-tea','Mad Tea Party','mk','Fantasyland','Giratório','Baixa','—',20,'aberta','2 min','Lightning Lane'),
+  A('little-mermaid','Under the Sea: Journey of the Little Mermaid','mk','Fantasyland','Dark ride','Baixa','—',25,'aberta','7 min','Lightning Lane'),
+  A('mickey-philharmagic','Mickey\'s PhilharMagic','mk','Fantasyland','Show 4D','Baixa','—',15,'aberta','12 min','Lightning Lane'),
+  A('barnstormer','The Barnstormer','mk','Fantasyland','Montanha-russa','Baixa','89 cm',20,'aberta','1 min','Lightning Lane'),
+  A('dumbo','Dumbo the Flying Elephant','mk','Fantasyland','Aéreo','Baixa','—',25,'aberta','2 min','Lightning Lane'),
+  A('prince-carrousel','Prince Charming Regal Carrousel','mk','Fantasyland','Carrossel','Baixa','—',10,'aberta','2 min','—'),
+  A('guardians','Guardians of the Galaxy: Cosmic Rewind','epcot','World Discovery','Montanha-russa','Alta','107 cm',110,'aberta','3 min','Fila virtual'),
+  A('test-track','Test Track','epcot','World Discovery','Montanha-russa','Média','102 cm',80,'aberta','5 min','Lightning Lane'),
+  A('mission-space','Mission: SPACE','epcot','World Discovery','Simulador','Alta','112 cm',30,'aberta','5 min','Lightning Lane'),
+  A('spaceship-earth','Spaceship Earth','epcot','World Celebration','Dark ride','Baixa','—',25,'aberta','16 min','Lightning Lane'),
+  A('seas-nemo','The Seas with Nemo & Friends','epcot','World Nature','Dark ride','Baixa','—',20,'aberta','5 min','—'),
+  A('soarin','Soarin\' Around the World','epcot','World Nature','Simulador','Baixa','102 cm',55,'aberta','5 min','Lightning Lane'),
+  A('living-land','Living with the Land','epcot','World Nature','Passeio','Baixa','—',15,'aberta','14 min','Lightning Lane'),
+  A('journey-imagination','Journey Into Imagination with Figment','epcot','World Nature','Dark ride','Baixa','—',15,'aberta','6 min','—'),
+  A('remy','Remy\'s Ratatouille Adventure','epcot','World Showcase','Dark ride','Baixa','—',60,'aberta','5 min','Lightning Lane'),
+  A('frozen','Frozen Ever After','epcot','World Showcase','Dark ride','Baixa','—',70,'aberta','5 min','Lightning Lane'),
+  A('gran-fiesta','Gran Fiesta Tour','epcot','World Showcase','Dark ride','Baixa','—',15,'aberta','7 min','—'),
+  A('american-adventure','The American Adventure','epcot','World Showcase','Show','Baixa','—',10,'aberta','29 min','—'),
+  A('rise','Rise of the Resistance','hs',"Galaxy's Edge",'Dark ride','Média','—',85,'aberta','18 min','Lightning Lane'),
+  A('falcon','Millennium Falcon: Smugglers Run','hs',"Galaxy's Edge",'Simulador','Média','—',50,'aberta','5 min','Lightning Lane'),
+  A('tot','The Twilight Zone Tower of Terror','hs','Sunset Blvd','Queda livre','Alta','102 cm',65,'aberta','8 min','Lightning Lane'),
+  A('rockin-rollercoaster','Rock \'n\' Roller Coaster','hs','Sunset Blvd','Montanha-russa','Alta','122 cm',70,'aberta','2 min','Lightning Lane'),
+  A('slinky','Slinky Dog Dash','hs','Toy Story Land','Montanha-russa','Média','97 cm',80,'aberta','2 min','Lightning Lane'),
+  A('toy-story-mania','Toy Story Mania!','hs','Toy Story Land','Dark ride','Baixa','—',45,'aberta','7 min','Lightning Lane'),
+  A('alien-swirling','Alien Swirling Saucers','hs','Toy Story Land','Giratório','Baixa','81 cm',30,'aberta','1 min','Lightning Lane'),
+  A('star-tours','Star Tours – The Adventures Continue','hs','Echo Lake','Simulador','Média','102 cm',35,'aberta','7 min','Lightning Lane'),
+  A('indiana-jones','Indiana Jones Epic Stunt Spectacular!','hs','Echo Lake','Show','Baixa','—',15,'aberta','30 min','—'),
+  A('muppet-vision','Muppet-Vision 3D','hs','Grand Avenue','Show 4D','Baixa','—',15,'aberta','17 min','—'),
+  A('mickey-railway','Mickey & Minnie\'s Runaway Railway','hs','Hollywood Blvd','Dark ride','Baixa','—',55,'aberta','5 min','Lightning Lane'),
+  A('star-wars-launch-bay','Star Wars Launch Bay','hs','Animation Courtyard','Exposição','Baixa','—',10,'aberta','livre','—'),
+  A('avatar','Avatar Flight of Passage','ak','Pandora','Simulador','Média','112 cm',120,'aberta','5 min','Lightning Lane'),
+  A('navi','Na\'vi River Journey','ak','Pandora','Dark ride','Baixa','—',65,'aberta','5 min','Lightning Lane'),
+  A('everest','Expedition Everest','ak','Asia','Montanha-russa','Alta','112 cm',40,'aberta','3 min','Lightning Lane'),
+  A('kali-river','Kali River Rapids','ak','Asia','Water ride','Média','97 cm',35,'aberta','5 min','Lightning Lane'),
+  A('feathered-friends','Feathered Friends in Flight!','ak','Asia','Show','Baixa','—',20,'aberta','25 min','—'),
+  A('safari','Kilimanjaro Safaris','ak','Africa','Passeio','Baixa','—',30,'aberta','20 min','Lightning Lane'),
+  A('gorilla-trail','Gorilla Falls Exploration Trail','ak','Africa','Exploração','Baixa','—',5,'aberta','livre','—'),
+  A('festival-lion-king','Festival of the Lion King','ak','Africa','Show','Baixa','—',20,'aberta','30 min','Lightning Lane'),
+  A('dinosaur','DINOSAUR','ak','DinoLand','Dark ride','Alta','102 cm',30,'aberta','4 min','Lightning Lane'),
+  A('triceratop','TriceraTop Spin','ak','DinoLand','Aéreo','Baixa','—',15,'aberta','2 min','—'),
+  A('wilderness-explorers','Wilderness Explorers','ak','Discovery Island','Exploração','Baixa','—',0,'aberta','livre','—'),
+  A('velocicoaster','Jurassic World VelociCoaster','ioa','Jurassic Park','Montanha-russa','Alta','127 cm',90,'aberta','2 min','Express Pass'),
+  A('jp-river','Jurassic Park River Adventure','ioa','Jurassic Park','Water ride','Média','107 cm',35,'aberta','6 min','Express Pass'),
+  A('pteranodon','Pteranodon Flyers','ioa','Jurassic Park','Aéreo','Baixa','92 cm',40,'aberta','1 min','—'),
+  A('skull-island','Skull Island: Reign of Kong','ioa','Skull Island','Dark ride','Média','92 cm',45,'aberta','6 min','Express Pass'),
+  A('hagrid','Hagrid\'s Magical Creatures Motorbike Adventure','ioa','Hogsmeade','Montanha-russa','Alta','122 cm',115,'aberta','3 min','—'),
+  A('forbidden','Harry Potter and the Forbidden Journey','ioa','Hogsmeade','Dark ride','Média','122 cm',55,'aberta','5 min','Express Pass'),
+  A('flight-hippogriff','Flight of the Hippogriff','ioa','Hogsmeade','Montanha-russa','Baixa','97 cm',30,'aberta','1 min','Express Pass'),
+  A('hulk','The Incredible Hulk Coaster','ioa','Marvel Super Hero Island','Montanha-russa','Alta','137 cm',50,'aberta','2 min','Express Pass'),
+  A('spiderman','The Amazing Adventures of Spider-Man','ioa','Marvel Super Hero Island','Dark ride','Média','102 cm',40,'aberta','5 min','Express Pass'),
+  A('doctor-doom','Doctor Doom\'s Fearfall','ioa','Marvel Super Hero Island','Queda livre','Alta','132 cm',25,'aberta','1 min','Express Pass'),
+  A('storm-force','Storm Force Accelatron','ioa','Marvel Super Hero Island','Giratório','Baixa','—',15,'aberta','2 min','Express Pass'),
+  A('dudley','Dudley Do-Right\'s Ripsaw Falls','ioa','Toon Lagoon','Water ride','Média','112 cm',30,'aberta','5 min','Express Pass'),
+  A('bilge-rat','Popeye & Bluto\'s Bilge-Rat Barges','ioa','Toon Lagoon','Water ride','Média','107 cm',30,'aberta','5 min','Express Pass'),
+  A('cat-hat','The Cat in the Hat','ioa','Seuss Landing','Dark ride','Baixa','—',20,'aberta','4 min','Express Pass'),
+  A('high-sky-trolley','The High in the Sky Seuss Trolley Train Ride!','ioa','Seuss Landing','Passeio','Baixa','—',20,'aberta','4 min','Express Pass'),
+  A('caro-seuss-el','Caro-Seuss-el','ioa','Seuss Landing','Carrossel','Baixa','—',15,'aberta','2 min','Express Pass'),
+  A('one-fish','One Fish, Two Fish, Red Fish, Blue Fish','ioa','Seuss Landing','Aéreo','Baixa','—',15,'aberta','2 min','Express Pass'),
+  A('gringotts','Harry Potter and the Escape from Gringotts','usf','Diagon Alley','Dark ride','Média','107 cm',75,'aberta','6 min','Express Pass'),
+  A('mummy','Revenge of the Mummy','usf','New York','Montanha-russa','Alta','122 cm',30,'aberta','3 min','Express Pass'),
+  A('transformers','Transformers: The Ride 3D','usf','Production Central','Simulador','Média','102 cm',45,'aberta','5 min','Express Pass'),
+  A('rockit','Hollywood Rip Ride Rockit','usf','Production Central','Montanha-russa','Alta','132 cm',40,'aberta','2 min','Express Pass'),
+  A('despicable-me','Despicable Me Minion Mayhem','usf','Production Central','Simulador','Baixa','102 cm',35,'aberta','5 min','Express Pass'),
+  A('villain-con','Villain-Con Minion Blast','usf','Production Central','Interativo','Baixa','—',30,'aberta','5 min','Express Pass'),
+  A('mib','Men in Black Alien Attack','usf','World Expo','Dark ride','Baixa','107 cm',25,'aberta','5 min','Express Pass'),
+  A('fast-furious','Fast & Furious – Supercharged','usf','San Francisco','Simulador','Média','102 cm',20,'aberta','5 min','Express Pass'),
+  A('simpsons-ride','The Simpsons Ride','usf','Springfield','Simulador','Média','102 cm',30,'aberta','6 min','Express Pass'),
+  A('kang-kodos','Kang & Kodos\' Twirl \'n\' Hurl','usf','Springfield','Aéreo','Baixa','—',15,'aberta','2 min','Express Pass'),
+  A('et','E.T. Adventure','usf','Production Central','Dark ride','Baixa','86 cm',20,'aberta','4 min','Express Pass'),
+  A('hogwarts-express-usf','Hogwarts Express – King\'s Cross Station','usf','Diagon Alley','Passeio','Baixa','—',30,'aberta','4 min','Express Pass'),
+  A('stardust','Stardust Racers','epic','Celestial Park','Montanha-russa','Alta','132 cm',95,'aberta','2 min','Express Pass'),
+  A('constellation','Constellation Carousel','epic','Celestial Park','Carrossel','Baixa','—',20,'aberta','3 min','Express Pass'),
+  A('mario-kart','Mario Kart: Bowser\'s Challenge','epic','Super Nintendo World','Dark ride','Média','107 cm',100,'aberta','5 min','Express Pass'),
+  A('yoshi','Yoshi\'s Adventure','epic','Super Nintendo World','Passeio','Baixa','—',45,'aberta','5 min','Express Pass'),
+  A('mine-cart','Mine-Cart Madness','epic','Super Nintendo World','Montanha-russa','Média','107 cm',85,'aberta','3 min','Express Pass'),
+  A('monsters','Monsters Unchained: The Frankenstein Experiment','epic','Dark Universe','Dark ride','Alta','122 cm',70,'aberta','6 min','Express Pass'),
+  A('curse-werewolf','Curse of the Werewolf','epic','Dark Universe','Montanha-russa','Média','122 cm',60,'aberta','2 min','Express Pass'),
+  A('hiccup-wing','Hiccup\'s Wing Gliders','epic','Isle of Berk','Montanha-russa','Média','102 cm',65,'aberta','2 min','Express Pass'),
+  A('dragon-racer','Dragon Racer\'s Rally','epic','Isle of Berk','Aéreo','Baixa','—',40,'aberta','3 min','Express Pass'),
+  A('fire-drill','Fyre Drill','epic','Isle of Berk','Water ride','Baixa','—',30,'aberta','4 min','Express Pass'),
+  A('ministry','Harry Potter and the Battle at the Ministry','epic','Wizarding World: Ministry of Magic','Dark ride','Média','—',120,'aberta','7 min','Express Pass'),
+  A('krakatau','Krakatau Aqua Coaster','volcano','River Village','Water coaster','Alta','107 cm',60,'aberta','2 min','—'),
+  A('ko-okiri','Ko\'okiri Body Plunge','volcano','Wave Village','Toboágua','Alta','112 cm',50,'aberta','1 min','—'),
+  A('kala-tai-nui','Kala & Ta Nui Serpentine Body Slides','volcano','Wave Village','Toboágua','Alta','112 cm',45,'aberta','1 min','—'),
+  A('honu-ika','Honu ika Moana','volcano','River Village','Boia','Média','122 cm',40,'aberta','2 min','—'),
+  A('waturi-beach','Waturi Beach (Wave Pool)','volcano','Wave Village','Piscina de ondas','Baixa','—',0,'aberta','livre','—'),
+  A('kopiko-wai','Kopiko Wai Winding River','volcano','River Village','Rio lento','Baixa','—',10,'aberta','livre','—'),
+  A('teawa','TeAwa The Fearless River','volcano','River Village','Rio rápido','Média','107 cm',15,'aberta','livre','—'),
+  A('ohyah-ohno','Ohyah & Ohno Drop Slides','volcano','Rainforest Village','Toboágua','Alta','122 cm',35,'aberta','1 min','—'),
+  A('puihi','Puihi','volcano','Rainforest Village','Boia','Alta','122 cm',40,'aberta','2 min','—'),
+  A('maku','Maku Round Raft Ride','volcano','Rainforest Village','Boia','Média','107 cm',35,'aberta','2 min','—'),
+];
+const C = (id,name,park,zone,time,wait)=>({id,name,park,zone,time,wait,priority:'media',status:'nao-planejado',photo:false,fav:false,note:''});
+SEED.characters = [
+  C('mickey','Mickey Mouse','mk','Main Street','10:00 - 18:00','20 min'),C('minnie','Minnie Mouse','mk','Main Street','10:00 - 18:00','20 min'),
+  C('donald','Donald','epcot','World Showcase','11:00 - 17:00','15 min'),C('pateta','Pateta','mk','Fantasyland','10:00 - 16:00','15 min'),
+  C('margarida','Margarida','epcot','World Showcase','11:00 - 17:00','15 min'),C('pluto','Pluto','mk','Main Street','10:00 - 16:00','15 min'),
+  C('princesas','Princesas Disney','mk','Fantasyland','10:00 - 18:00','30 min'),C('ariel','Ariel','mk','Fantasyland','10:00 - 17:00','25 min'),
+  C('bela','Bela','mk','Fantasyland','10:00 - 17:00','25 min'),C('cinderella','Cinderella','mk','Fantasyland','10:00 - 17:00','30 min'),
+  C('tiana','Tiana','mk','Fantasyland','10:00 - 17:00','25 min'),C('anna-elsa','Anna e Elsa','epcot','World Showcase','10:00 - 18:00','35 min'),
+  C('stitch','Stitch','mk','Tomorrowland','11:00 - 16:00','20 min'),C('woody-buzz','Woody e Buzz Lightyear','hs','Toy Story Land','10:00 - 18:00','25 min'),
+  C('vader','Darth Vader','hs',"Galaxy's Edge",'11:00 - 17:00','20 min'),C('chewbacca','Chewbacca','hs',"Galaxy's Edge",'11:00 - 17:00','20 min'),
+  C('mario','Mario','epic','Super Nintendo World','10:00 - 18:00','30 min'),C('luigi','Luigi','epic','Super Nintendo World','10:00 - 18:00','25 min'),
+  C('peach','Peach','epic','Super Nintendo World','10:00 - 18:00','25 min'),C('toad','Toad','epic','Super Nintendo World','10:00 - 18:00','20 min'),
+  C('hp-chars','Personagens de Harry Potter','ioa','Hogsmeade','11:00 - 17:00','15 min'),C('minions','Minions','usf','Production Central','10:00 - 18:00','25 min'),
+  C('shrek','Shrek','usf','Production Central','11:00 - 16:00','15 min'),C('fiona','Fiona','usf','Production Central','11:00 - 16:00','15 min'),
+  C('transformers-c','Transformers','usf','Production Central','11:00 - 17:00','20 min'),C('scooby','Scooby-Doo','usf','Hollywood','11:00 - 16:00','15 min'),
+  C('simpsons','Simpsons','usf','Springfield','11:00 - 17:00','20 min'),C('poppy','Poppy','usf','Hollywood','11:00 - 16:00','15 min'),
+  C('jurassic','Personagens de Jurassic World','ioa','Jurassic Park','11:00 - 16:00','15 min'),
+];
+const R = (id,name,park,zone,food,price,reserva,mobile,service)=>({id,name,park,zone,food,price,reserva,mobile,service,rating:0,note:'',status:'quero-ir',fav:false});
+SEED.restaurants = [
+  R('be-our-guest','Be Our Guest','mk','Fantasyland','Francesa','$$$',true,false,'Table Service'),
+  R('cinderella-table','Cinderella’s Royal Table','mk','Fantasyland','Americana','$$$$',true,false,'Table Service'),
+  R('crystal-palace','Crystal Palace','mk','Main Street','Buffet','$$$',true,false,'Table Service'),
+  R('caseys','Casey’s Corner','mk','Main Street','Hot Dogs','$',false,true,'Quick Service'),
+  R('woodys-lunch','Woody’s Lunch Box','hs','Toy Story Land','Americana','$',false,true,'Quick Service'),
+  R('ogas','Oga’s Cantina','hs',"Galaxy's Edge",'Bar/Drinks','$$',true,false,'Table Service'),
+  R('docking-bay','Docking Bay 7','hs',"Galaxy's Edge",'Fusão','$$',false,true,'Quick Service'),
+  R('space220','Space 220','epcot','World Discovery','Contemporânea','$$$$',true,false,'Table Service'),
+  R('connections','Connections Eatery','epcot','World Celebration','Americana','$',false,true,'Quick Service'),
+  R('flame-tree','Flame Tree Barbecue','ak','Discovery Island','Churrasco','$',false,true,'Quick Service'),
+  R('satuli','Satu’li Canteen','ak','Pandora','Fusão','$$',false,true,'Quick Service'),
+  R('leaky','Leaky Cauldron','usf','Diagon Alley','Britânica','$$',false,false,'Quick Service'),
+  R('three-broom','Three Broomsticks','ioa','Hogsmeade','Britânica','$$',false,false,'Quick Service'),
+  R('mythos','Mythos Restaurant','ioa','Lost Continent','Internacional','$$$',true,false,'Table Service'),
+  R('toothsome','Toothsome Chocolate Emporium','usf','CityWalk','Americana/Doces','$$$',true,false,'Table Service'),
+  R('krusty','Krusty Burger','usf','Springfield','Fast Food','$',false,false,'Quick Service'),
+  R('mels','Mel’s Drive-In','usf','Hollywood','Fast Food','$',false,false,'Quick Service'),
+  R('toadstool','Toadstool Cafe','epic','Super Nintendo World','Temática','$$',true,false,'Quick Service'),
+  R('circus','Circus McGurkus Cafe','ioa','Seuss Landing','Americana','$',false,false,'Quick Service'),
+  R('finnegans','Finnegan’s Bar & Grill','usf','New York','Irlandesa','$$$',true,false,'Table Service'),
+];
+SEED.itinerary = [
+  {id:'d1', day:'Dia 1', date:'', park:'mk', start:'09:00', end:'22:00', items:[
+    {id:'i1', time:'09:15', name:'Seven Dwarfs Mine Train', type:'atracao', park:'mk', zone:'Fantasyland', status:'pendente', note:'Chegar cedo (rope drop)', doneAt:'', wait:75, live:false},
+    {id:'i2', time:'11:00', name:'Encontro com Mickey Mouse', type:'personagem', park:'mk', zone:'Main Street', status:'pendente', note:'', doneAt:''},
+    {id:'i3', time:'12:30', name:'Almoço - Be Our Guest', type:'restaurante', park:'mk', zone:'Fantasyland', status:'pendente', note:'Reserva 12:30', doneAt:''},
+    {id:'i4', time:'14:00', name:'Pausa / descanso', type:'pausa', park:'mk', zone:'—', status:'pendente', note:'', doneAt:''},
+    {id:'i5', time:'20:30', name:'Show de fogos', type:'show', park:'mk', zone:'Main Street', status:'pendente', note:'', doneAt:''},
+  ]},
+  {id:'d2', day:'Dia 2', date:'', park:'ioa', start:'09:00', end:'21:00', items:[
+    {id:'i6', time:'09:10', name:'Jurassic World VelociCoaster', type:'atracao', park:'ioa', zone:'Jurassic Park', status:'pendente', note:'', doneAt:'', wait:90, live:false},
+    {id:'i7', time:'11:30', name:'Hagrid’s Motorbike Adventure', type:'atracao', park:'ioa', zone:'Hogsmeade', status:'pendente', note:'', doneAt:'', wait:115, live:false},
+    {id:'i8', time:'13:00', name:'Almoço - Three Broomsticks', type:'restaurante', park:'ioa', zone:'Hogsmeade', status:'pendente', note:'', doneAt:''},
+  ]},
+];
+SEED.notes = [
+  {id:'n1', title:'Documentos', content:'Passaporte, visto, seguro viagem e reserva do hotel.', category:'Documentos', fav:true, created:Date.now(), updated:Date.now()},
+  {id:'n2', title:'Dica de app', content:'Baixar apps oficiais My Disney Experience e Universal Orlando Resort.', category:'Dicas', fav:false, created:Date.now(), updated:Date.now()},
+];
+SEED.expenses = [
+  {id:'e1', desc:'Ingressos 5 dias', value:650, category:'Ingressos', date:'', park:'', pay:'Cartão', note:''},
+  {id:'e2', desc:'Almoço Be Our Guest', value:62, category:'Alimentação', date:'', park:'mk', pay:'Cartão', note:''},
+];
+SEED.shopping = [
+  {id:'s1', name:'Varinha do Harry Potter', store:'Ollivanders', park:'ioa', category:'Varinhas', value:60, priority:'alta', status:'desejado', fav:true, note:''},
+  {id:'s2', name:'MagicBand+', store:'Disney Store', park:'mk', category:'MagicBand', value:35, priority:'media', status:'desejado', fav:false, note:''},
+];
+SEED.alerts = [
+  {id:'al1', title:'Reserva Be Our Guest', desc:'Chegar 10 min antes', date:'', time:'12:20', category:'Restaurante', status:'pendente'},
+  {id:'al2', title:'Lançamento fila virtual TRON', desc:'Entrar no app às 07:00', date:'', time:'07:00', category:'Lightning Lane', status:'pendente'},
+];
+SEED.photos = [];
+SEED.rainPlan = {
+  active:false,
+  coveredAttractions:['Pirates of the Caribbean','Haunted Mansion','Remy\'s Ratatouille Adventure','Harry Potter and the Forbidden Journey','The Amazing Adventures of Spider-Man','Transformers: The Ride 3D'],
+  coveredRestaurants:['Be Our Guest','Space 220','Leaky Cauldron','Toothsome Chocolate Emporium'],
+  indoorShows:['Muppet-Vision 3D','The American Adventure','Mickey\'s PhilharMagic'],
+  shops:['Emporium (Main Street)','Ollivanders','World of Disney'],
+  avoid:['Avatar Flight of Passage (fila externa)','Kilimanjaro Safaris','Jurassic Park River Adventure','Volcano Bay (parque aquático)']
+};
+SEED.settings = {
+  tripName:'Minha Viagem Mágica', startDate:'2026-12-20', endDate:'2026-12-28',
+  currency:'USD', theme:'light', group:'ambos', view:'cards',
+  simData:true, liveQueue:false, proxyUrl:'', tempUnit:'C', currentDay:'d1'
+};
+</script>
+
+<script>
+/* 4. STATE + STORAGE */
+const LS_KEY='magicTripDashboard_v1';
+function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+function defaultState(){ return {parks:deepClone(SEED.parks),attractions:deepClone(SEED.attractions),characters:deepClone(SEED.characters),restaurants:deepClone(SEED.restaurants),itinerary:deepClone(SEED.itinerary),notes:deepClone(SEED.notes),expenses:deepClone(SEED.expenses),shopping:deepClone(SEED.shopping),alerts:deepClone(SEED.alerts),photos:deepClone(SEED.photos),rainPlan:deepClone(SEED.rainPlan),settings:deepClone(SEED.settings)}; }
+function loadState(){ try{ const raw=localStorage.getItem(LS_KEY); if(!raw)return defaultState(); return Object.assign(defaultState(),JSON.parse(raw)); }catch(e){ console.warn('localStorage inválido',e); return defaultState(); } }
+function saveState(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(e){ toast('⚠️ Não foi possível salvar (armazenamento cheio?)'); console.error(e); } }
+let state=loadState();
+
+/* 5. HELPERS */
+const $=(s,root=document)=>root.querySelector(s);
+const $$=(s,root=document)=>[...root.querySelectorAll(s)];
+const uid=()=>'x'+Math.random().toString(36).slice(2,9);
+const esc=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function parkById(id){ return state.parks.find(p=>p.id===id); }
+function parkName(id){ const p=parkById(id); return p?p.name:(id||'—'); }
+function parkIcon(id){ const p=parkById(id); return p?p.icon:'📍'; }
+function parkGroup(id){ const p=parkById(id); return p?p.group:''; }
+function capitalize(s){ return String(s).charAt(0).toUpperCase()+String(s).slice(1); }
+function currencySymbol(){ return state.settings.currency==='BRL'?'R$':'US$'; }
+function fmtMoney(v){ return currencySymbol()+' '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function queueClass(m){ m=Number(m)||0; if(m<=30)return'q-green'; if(m<=60)return'q-yellow'; if(m<=90)return'q-orange'; return'q-red'; }
+function queueLabel(m){ m=Number(m)||0; if(m<=30)return'🟢'; if(m<=60)return'🟡'; if(m<=90)return'🟠'; return'🔴'; }
+function relTime(iso){ if(!iso)return''; const d=new Date(iso); if(isNaN(d))return''; const diff=Math.round((Date.now()-d)/60000); if(diff<1)return'agora'; if(diff<60)return diff+' min atrás'; return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'),2600); }
+function openModal(title,html){ $('#modalTitle').textContent=title; $('#modalBody').innerHTML=html; $('#modalOverlay').classList.add('open'); }
+function closeModal(){ $('#modalOverlay').classList.remove('open'); }
+function toggleField(coll,id,field){ const it=state[coll].find(x=>x.id===id); if(!it)return; it[field]=!it[field]; saveState(); render(currentPage); refreshDashboardIfNeeded(); }
+window.toggleField=toggleField;
+function refreshDashboardIfNeeded(){ if(currentPage==='dashboard') render('dashboard'); }
+
+/* =========================================================
+   INTEGRAÇÃO 1 — GOOGLE MAPS (embed iframe, sem API key)
+   Usa o endpoint público output=embed. Ideal para 1 local.
+   =========================================================
+   FUTURA INTEGRAÇÃO: para marcadores customizados/rotas, usar a
+   Maps JavaScript API oficial (requer key + billing). */
+function gmapEmbedUrl(lat,lng,z=15){ return `https://www.google.com/maps?q=${lat},${lng}&z=${z}&output=embed`; }
+function gmapLinkUrl(lat,lng){ return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`; }
+
+/* =========================================================
+   INTEGRAÇÃO 2 — PREVISÃO DO TEMPO (Open-Meteo, sem API key)
+   https://api.open-meteo.com/v1/forecast — CORS liberado.
+   Cache em memória por parque para evitar chamadas repetidas.
+   ========================================================= */
+const WX_CACHE={}; // {parkId:{ts,data}}
+const WX_TTL=30*60*1000; // 30 min
+// Mapeamento WMO weather code -> emoji + descrição (pt-BR)
+function wxInfo(code){
+  const m={0:['☀️','Céu limpo'],1:['🌤️','Predom. limpo'],2:['⛅','Parc. nublado'],3:['☁️','Nublado'],
+    45:['🌫️','Névoa'],48:['🌫️','Névoa gelada'],51:['🌦️','Garoa fraca'],53:['🌦️','Garoa'],55:['🌦️','Garoa forte'],
+    61:['🌧️','Chuva fraca'],63:['🌧️','Chuva'],65:['🌧️','Chuva forte'],66:['🌧️','Chuva gelada'],67:['🌧️','Chuva gelada'],
+    71:['🌨️','Neve fraca'],73:['🌨️','Neve'],75:['🌨️','Neve forte'],77:['🌨️','Grãos de neve'],
+    80:['🌦️','Pancadas'],81:['🌦️','Pancadas'],82:['⛈️','Pancadas fortes'],
+    85:['🌨️','Pancadas de neve'],86:['🌨️','Pancadas de neve'],
+    95:['⛈️','Tempestade'],96:['⛈️','Tempestade c/ granizo'],99:['⛈️','Tempestade c/ granizo']};
+  return m[code]||['🌡️','—'];
+}
+function tempUnitParam(){ return state.settings.tempUnit==='F'?'fahrenheit':'celsius'; }
+function tempUnitSym(){ return state.settings.tempUnit==='F'?'°F':'°C'; }
+async function fetchWeather(park){
+  const c=WX_CACHE[park.id];
+  if(c && (Date.now()-c.ts)<WX_TTL) return c.data;
+  const u=`https://api.open-meteo.com/v1/forecast?latitude=${park.lat}&longitude=${park.lng}`
+    +`&current=temperature_2m,weather_code,precipitation`
+    +`&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max`
+    +`&timezone=America%2FNew_York&forecast_days=7&temperature_unit=${tempUnitParam()}`;
+  const resp=await fetch(u,{headers:{'Accept':'application/json'}});
+  if(!resp.ok) throw new Error('HTTP '+resp.status);
+  const data=await resp.json();
+  WX_CACHE[park.id]={ts:Date.now(),data};
+  return data;
+}
+// Renderiza o card de clima (usado no Dashboard e na aba Clima). elId = alvo.
+async function loadWeatherInto(elId, parkId){
+  const el=document.getElementById(elId); if(!el) return;
+  const park=parkById(parkId)||state.parks[0];
+  el.innerHTML=`<div class="wx-now"><div class="wx-ico">⏳</div><div><div class="wx-temp">…</div><div class="wx-meta">Carregando previsão…</div></div></div>`;
+  try{
+    const d=await fetchWeather(park);
+    const cur=d.current||{}; const [ci,cd]=wxInfo(cur.weather_code);
+    const days=(d.daily&&d.daily.time)?d.daily.time:[];
+    const dayHtml=days.map((t,i)=>{ const [ic]=wxInfo(d.daily.weather_code[i]); const max=Math.round(d.daily.temperature_2m_max[i]); const min=Math.round(d.daily.temperature_2m_min[i]); const rain=d.daily.precipitation_probability_max?d.daily.precipitation_probability_max[i]:null; const dn=new Date(t+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'}).replace('.',''); return `<div class="wx-day"><div class="d">${dn}</div><div class="i">${ic}</div><div class="t">${max}°/${min}°</div>${rain!=null?`<div class="r">💧${rain}%</div>`:''}</div>`; }).join('');
+    el.innerHTML=`<div class="wx-now"><div class="wx-ico">${ci}</div><div><div class="wx-temp">${Math.round(cur.temperature_2m)}${tempUnitSym()}</div><div class="wx-meta">${cd} · ${esc(park.icon+' '+park.name)}</div></div></div><div class="wx-forecast">${dayHtml}</div><p class="tiny" style="color:#fff;opacity:.85;margin-top:10px">Fonte: <a href="https://open-meteo.com/" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">Open-Meteo</a> · previsão para ${esc(park.name)}</p>`;
+  }catch(e){
+    el.innerHTML=`<div class="wx-now"><div class="wx-ico">🌐</div><div><div class="wx-temp" style="font-size:1.1rem">Sem previsão</div><div class="wx-meta">Não foi possível carregar (offline ou bloqueio). Tente novamente.</div></div></div>`;
+    console.warn('Open-Meteo falhou',e);
+  }
+}
+// Verifica se algum dos próximos dias tem alta probabilidade de chuva (para sugerir Plano de Chuva)
+async function rainSuggestion(parkId){
+  try{ const d=await fetchWeather(parkById(parkId)||state.parks[0]); const probs=d.daily&&d.daily.precipitation_probability_max||[]; const max=Math.max(0,...probs.slice(0,3)); return max; }catch(e){ return null; }
+}
+
+/* QUEUE-TIMES.COM */
+const QT_ATTRIB=`<span class="attrib">⚡ Powered by <a href="https://queue-times.com/" target="_blank" rel="noopener">Queue-Times.com</a></span>`;
+function normalizeName(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[™®]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\b(the|a|of|at|with|and)\b/g,' ').replace(/\s+/g,' ').trim(); }
+function buildQueueUrl(qtId){ const direct=`https://queue-times.com/parks/${qtId}/queue_times.json`; const proxy=(state.settings.proxyUrl||'').trim(); if(!proxy)return direct; if(proxy.includes('{id}'))return proxy.replace('{id}',qtId); return proxy+qtId; }
+async function fetchQueueTimesPark(qtId){ const resp=await fetch(buildQueueUrl(qtId),{headers:{'Accept':'application/json'}}); if(!resp.ok)throw new Error('HTTP '+resp.status); return resp.json(); }
+async function applyLiveQueueTimes(){ let ok=0,fail=0,matched=0; for(const p of state.parks.filter(p=>p.qtId)){ try{ const data=await fetchQueueTimesPark(p.qtId); const rides=[]; (data.lands||[]).forEach(l=>(l.rides||[]).forEach(r=>rides.push(r))); (data.rides||[]).forEach(r=>rides.push(r)); const idx=rides.map(r=>({r,n:normalizeName(r.name)})); state.attractions.filter(a=>a.park===p.id).forEach(a=>{ const an=normalizeName(a.name); let m=idx.find(x=>x.n===an)||idx.find(x=>x.n.includes(an)||an.includes(x.n)); if(m){ a.wait=Number(m.r.wait_time)||0; a.status=m.r.is_open?'aberta':'fechada'; a.lastUpdated=m.r.last_updated||new Date().toISOString(); a.live=true; matched++; } }); ok++; }catch(e){ fail++; console.warn('Queue-Times falhou p/',p.name,e); } } syncItineraryWaits(); return {ok,fail,matched}; }
+function syncItineraryWaits(){ state.itinerary.forEach(d=>d.items.forEach(it=>{ if(it.type==='atracao'){ const a=state.attractions.find(x=>x.name===it.name); if(a){ it.wait=a.wait; it.live=a.live; } } })); }
+async function atualizarTemposDeFila(silent=false){
+  if(state.settings.liveQueue){
+    if(!silent) toast('🔄 Buscando tempos reais no Queue-Times…');
+    const {matched}=await applyLiveQueueTimes(); lastLiveSync=Date.now(); saveState(); render(currentPage);
+    if(matched>0) toast(`✅ ${matched} atrações atualizadas ao vivo${silent?' (auto)':''} (Queue-Times)`);
+    else if(!silent) toast('⚠️ Sem dados ao vivo (CORS/offline?). Configure a URL do proxy ou use simulado.');
+    return;
+  }
+  if(!state.settings.simData){ if(!silent) toast('Dados simulados desativados nas Configurações.'); return; }
+  state.attractions.forEach(a=>{ if(a.status==='aberta'){ a.wait=Math.floor(Math.random()*131); a.live=false; a.lastUpdated=''; } });
+  syncItineraryWaits(); saveState(); render(currentPage); if(!silent) toast('🎲 Tempos de fila simulados atualizados');
+}
+window.atualizarTemposDeFila=atualizarTemposDeFila;
+async function testProxy(){ const testId=(state.parks.find(p=>p.qtId)||{}).qtId||6; const url=buildQueueUrl(testId); toast('🧪 Testando: '+(state.settings.proxyUrl?'via proxy…':'conexão direta…')); try{ const data=await fetchQueueTimesPark(testId); const rides=(data.lands||[]).reduce((n,l)=>n+(l.rides?l.rides.length:0),0)+((data.rides||[]).length); openModal('✅ Conexão OK',`<p>A busca funcionou! 🎉</p><p class="tiny" style="margin:10px 0">URL usada:<br><code style="word-break:break-all">${esc(url)}</code></p><p>Recebidas <strong>${rides}</strong> atrações do parque de teste.</p><button class="btn btn--primary btn--block" style="margin-top:12px" onclick="closeModal()">Fechar</button>`); }catch(e){ openModal('⚠️ Falha na conexão',`<p>Não foi possível obter os dados.</p><p class="tiny" style="margin:10px 0">URL testada:<br><code style="word-break:break-all">${esc(url)}</code></p><p class="tiny">Causas: CORS (app em file://), URL do proxy incorreta (use <code>{id}</code>), ou sem internet.</p><button class="btn btn--primary btn--block" style="margin-top:12px" onclick="closeModal()">Fechar</button>`); } }
+window.testProxy=testProxy;
+const LIVE_REFRESH_MS=5*60*1000; let _liveTimer=null, lastLiveSync=0;
+function startAutoRefresh(){ stopAutoRefresh(); if(!state.settings.liveQueue)return; _liveTimer=setInterval(()=>{ if(document.hidden)return; atualizarTemposDeFila(true); },LIVE_REFRESH_MS); }
+function stopAutoRefresh(){ if(_liveTimer){ clearInterval(_liveTimer); _liveTimer=null; } }
+window.startAutoRefresh=startAutoRefresh; window.stopAutoRefresh=stopAutoRefresh;
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&state.settings.liveQueue&&(Date.now()-lastLiveSync)>LIVE_REFRESH_MS){ atualizarTemposDeFila(true); } });
+
+/* 6. NAVEGAÇÃO */
+const PAGES=[{id:'dashboard',label:'Dashboard',icon:'📊'},{id:'parks',label:'Parques',icon:'🎡'},{id:'attractions',label:'Atrações',icon:'🎢'},{id:'characters',label:'Personagens',icon:'🧑‍🎤'},{id:'restaurants',label:'Restaurantes',icon:'🍽️'},{id:'itinerary',label:'Roteiro',icon:'🗓️'},{id:'map',label:'Mapa dos Parques',icon:'🗺️'},{id:'weather',label:'Clima',icon:'☀️'},{id:'notes',label:'Anotações',icon:'📝'},{id:'favorites',label:'Favoritos',icon:'⭐'},{id:'expenses',label:'Gastos',icon:'💰'},{id:'shopping',label:'Compras',icon:'🛍️'},{id:'rain',label:'Plano de Chuva',icon:'🌧️'},{id:'alerts',label:'Alertas',icon:'🔔'},{id:'gallery',label:'Galeria',icon:'📷'},{id:'settings',label:'Configurações',icon:'⚙️'}];
+let currentPage='dashboard';
+function buildNav(){ $('#navMenu').innerHTML=PAGES.map(p=>`<button class="nav__item" data-page="${p.id}" aria-label="${p.label}"><span class="ico" aria-hidden="true">${p.icon}</span> ${p.label}</button>`).join(''); const mobile=['dashboard','itinerary','attractions','map','weather','settings']; $('#bottomNav').innerHTML=mobile.map(id=>{const p=PAGES.find(x=>x.id===id);return `<button data-page="${p.id}" aria-label="${p.label}" title="${p.label}">${p.icon}</button>`;}).join(''); $$('[data-page]').forEach(b=>b.addEventListener('click',()=>{navigateTo(b.dataset.page);closeSidebar();})); }
+function navigateTo(pageId){ currentPage=pageId; const meta=PAGES.find(p=>p.id===pageId); $('#pageTitle').textContent=meta?meta.label:''; $$('.nav__item').forEach(b=>b.classList.toggle('active',b.dataset.page===pageId)); $$('#bottomNav button').forEach(b=>b.classList.toggle('active',b.dataset.page===pageId)); render(pageId); window.scrollTo(0,0); }
+window.navigateTo=navigateTo;
+function render(pageId){ const map={dashboard:renderDashboard,parks:renderParks,attractions:renderAttractions,characters:renderCharacters,restaurants:renderRestaurants,itinerary:renderItinerary,map:renderMap,weather:renderWeather,notes:renderNotes,favorites:renderFavorites,expenses:renderExpenses,shopping:renderShopping,rain:renderRainPlan,alerts:renderAlerts,gallery:renderGallery,settings:renderSettings,search:renderSearchResults}; $('#content').innerHTML=`<section class="page active">${(map[pageId]||renderDashboard)()}</section>`; if(pageId==='itinerary')wireItinerary(); if(pageId==='gallery')wireGallery(); if(pageId==='dashboard'){ const dp=(state.itinerary.find(d=>d.id===state.settings.currentDay)||state.itinerary[0]); if(dp) loadWeatherInto('wxDash', dp.park); } if(pageId==='weather'){ loadWeatherInto('wxMain', wxPark); } }
+function queueNotice(){ if(state.settings.liveQueue){ return `<div class="notice" role="note" style="background:rgba(34,160,107,.12);border-color:rgba(34,160,107,.4);color:var(--green)"><span>🟢</span><span>Tempos de fila <strong>AO VIVO</strong> via Queue-Times.com — atualização automática a cada 5 min. ${QT_ATTRIB}</span></div>`; } return `<div class="notice" role="note"><span>ℹ️</span><span>Os tempos de espera são <strong>simulados</strong>. Ative "Dados ao vivo" em Configurações para usar o Queue-Times.com. ${QT_ATTRIB}</span></div>`; }
+
+/* CONTADOR REGRESSIVO */
+function computeCountdown(){ const sd=state.settings.startDate; if(!sd)return{set:false}; const target=new Date(sd+'T00:00:00'); if(isNaN(target))return{set:false}; const now=new Date(); const diff=target-now; const end=state.settings.endDate?new Date(state.settings.endDate+'T23:59:59'):new Date(target.getTime()+86400000); if(diff<=0)return (now<=end)?{set:true,phase:'during'}:{set:true,phase:'past'}; return {set:true,phase:'before',days:Math.floor(diff/86400000),hours:Math.floor((diff%86400000)/3600000),mins:Math.floor((diff%3600000)/60000),secs:Math.floor((diff%60000)/1000)}; }
+function countdownHTML(){ const c=computeCountdown(); if(!c.set)return `<div class="countdown"><h3>🗓️ Contagem regressiva</h3><p class="cd-sub">Defina a <strong>data de início</strong> em Configurações para ativar o contador.</p><button class="btn btn--sm" style="background:rgba(255,255,255,.25);color:#fff;border:none" onclick="navigateTo('settings')">⚙️ Configurações</button></div>`; if(c.phase==='during')return `<div class="countdown" id="cdBox"><h3>🎉 A viagem começou!</h3><p class="cd-sub">${esc(state.settings.tripName)} está em andamento. Aproveite! ✨</p><div class="cd-msg">Bem-vindo(a) a Orlando! 🏰🎢</div></div>`; if(c.phase==='past')return `<div class="countdown" id="cdBox" style="background:linear-gradient(135deg,#5a6b85,#2a3350)"><h3>💛 Viagem concluída</h3><p class="cd-sub">Esperamos que ${esc(state.settings.tripName)} tenha sido inesquecível! Reveja suas fotos na Galeria. 📷</p></div>`; return `<div class="countdown" id="cdBox" data-countdown="1"><h3>🗓️ Faltam para ${esc(state.settings.tripName)}</h3><p class="cd-sub">Início em ${new Date(state.settings.startDate+'T00:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}</p><div class="cd-timer"><div class="cd-box"><div class="cd-num" id="cd-days">${c.days}</div><div class="cd-lbl">dias</div></div><div class="cd-box"><div class="cd-num" id="cd-hours">${String(c.hours).padStart(2,'0')}</div><div class="cd-lbl">horas</div></div><div class="cd-box"><div class="cd-num" id="cd-mins">${String(c.mins).padStart(2,'0')}</div><div class="cd-lbl">min</div></div><div class="cd-box"><div class="cd-num" id="cd-secs">${String(c.secs).padStart(2,'0')}</div><div class="cd-lbl">seg</div></div></div></div>`; }
+let _cdTimer=null;
+function startCountdownTick(){ clearInterval(_cdTimer); _cdTimer=setInterval(()=>{ const box=document.getElementById('cdBox'); if(!box||!box.dataset.countdown)return; const c=computeCountdown(); if(!c.set||c.phase!=='before'){ if(currentPage==='dashboard')render('dashboard'); return; } const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;}; set('cd-days',c.days); set('cd-hours',String(c.hours).padStart(2,'0')); set('cd-mins',String(c.mins).padStart(2,'0')); set('cd-secs',String(c.secs).padStart(2,'0')); },1000); }
+
+/* 6.1 DASHBOARD */
+function renderDashboard(){
+  const favAttr=state.attractions.filter(a=>a.fav).length, doneAttr=state.attractions.filter(a=>a.done).length, totalAttr=state.attractions.length;
+  const charPlanned=state.characters.filter(c=>c.status!=='nao-planejado').length, charPhotos=state.characters.filter(c=>c.photo).length;
+  const favRest=state.restaurants.filter(r=>r.fav).length, reservas=state.restaurants.filter(r=>r.status==='reservado').length;
+  const totalNotes=state.notes.length, totalSpent=state.expenses.reduce((s,e)=>s+Number(e.value||0),0), shopPending=state.shopping.filter(s=>s.status==='desejado').length;
+  const allItems=state.itinerary.flatMap(d=>d.items), doneItems=allItems.filter(i=>i.status==='concluido').length, progress=allItems.length?Math.round(doneItems/allItems.length*100):0;
+  const day=state.itinerary.find(d=>d.id===state.settings.currentDay)||state.itinerary[0], dayPark=day?parkName(day.park):'—';
+  const openAttr=state.attractions.filter(a=>a.status==='aberta'), avgWait=openAttr.length?Math.round(openAttr.reduce((s,a)=>s+Number(a.wait||0),0)/openAttr.length):0;
+  const liveCount=state.attractions.filter(a=>a.live).length, todayAlerts=state.alerts.filter(a=>a.status==='pendente').slice(0,4);
+  const byPark={}; state.attractions.forEach(a=>byPark[a.park]=(byPark[a.park]||0)+1); const maxPark=Math.max(1,...Object.values(byPark));
+  const parkBars=Object.entries(byPark).map(([pid,n])=>{const p=parkById(pid);return barRow(p?p.name:pid,n,maxPark,p?p.color:'#888');}).join('');
+  const donePendBars=barRow('Concluídas',doneAttr,totalAttr||1,'var(--green)')+barRow('Pendentes',totalAttr-doneAttr,totalAttr||1,'var(--orange)');
+  const byCat={}; state.expenses.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.value||0)); const maxCat=Math.max(1,...Object.values(byCat));
+  const catBars=Object.entries(byCat).map(([cat,v])=>barRow(cat,v,maxCat,'var(--primary)',fmtMoney(v))).join('')||'<p class="tiny">Sem gastos registrados.</p>';
+  const rainBanner=state.rainPlan.active?`<div class="notice" style="background:rgba(31,111,235,.12);border-color:rgba(31,111,235,.4);color:var(--primary)"><span>🌧️</span><span><strong>Plano de chuva ATIVO.</strong> Priorize atrações e restaurantes cobertos (aba Plano de Chuva).</span></div>`:'';
+  const liveTag=liveCount>0?`<span class="badge badge--live" style="margin-left:8px">🟢 ${liveCount} ao vivo</span>`:'';
+  return `<div class="page-head"><div><h2>${esc(state.settings.tripName)}</h2><p>Visão geral da sua viagem mágica ✨</p></div><button class="btn btn--primary" onclick="atualizarTemposDeFila()">${state.settings.liveQueue?'🔄 Atualizar filas (ao vivo)':'🎲 Atualizar filas'}</button></div>
+  ${countdownHTML()}${rainBanner}
+  <div class="grid" style="grid-template-columns:1.2fr 1fr;margin-bottom:16px"><div class="wx-card" id="wxDash"></div><div class="card"><h3>🔔 Alertas de hoje</h3>${todayAlerts.length?todayAlerts.map(a=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><span>${esc(a.title)}</span><strong class="tiny">${a.time||''}</strong></div>`).join(''):'<p class="tiny">Nenhum alerta pendente.</p>'}<button class="btn btn--sm btn--ghost" style="margin-top:10px" onclick="navigateTo('alerts')">Ver todos →</button></div></div>
+  ${queueNotice()}
+  <div class="grid grid--stats">${statCard('⭐',favAttr,'Atrações favoritas')}${statCard('✅',doneAttr+'/'+totalAttr,'Atrações concluídas')}${statCard('🧑‍🎤',charPlanned,'Personagens planejados')}${statCard('📸',charPhotos,'Fotos com personagens')}${statCard('🍽️',favRest,'Restaurantes favoritos')}${statCard('📅',reservas,'Reservas planejadas')}${statCard('📝',totalNotes,'Anotações')}${statCard('💰',fmtMoney(totalSpent),'Total de gastos')}${statCard('🛍️',shopPending,'Compras pendentes')}${statCard('⏱️',avgWait+' min','Fila média '+(state.settings.liveQueue?'(ao vivo)':'(sim.)'))}</div>
+  <div class="grid" style="grid-template-columns:2fr 1fr;margin-top:16px">
+    <div class="card"><h3>Progresso geral da viagem ${liveTag}</h3><p class="muted">${doneItems} de ${allItems.length} itens do roteiro concluídos</p><div class="progress" style="margin-top:10px"><div class="progress__bar" style="width:${progress}%"></div></div><p class="tiny" style="margin-top:6px">${progress}% concluído</p><div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:16px"><div><span class="tiny">Dia atual</span><br><strong>${day?day.day:'—'}</strong></div><div><span class="tiny">Parque do dia</span><br><strong>${parkIcon(day?.park)} ${dayPark}</strong></div><div><span class="tiny">Horário</span><br><strong>${day?day.start+' - '+day.end:'—'}</strong></div></div></div>
+    <div class="card"><h3>🎢 Atrações por parque</h3><div class="chart-box" style="margin-top:12px">${parkBars}</div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:16px"><div class="card"><h3>✅ Concluídas vs Pendentes</h3><div class="chart-box" style="margin-top:12px">${donePendBars}</div></div><div class="card"><h3>💰 Gastos por categoria</h3><div class="chart-box" style="margin-top:12px">${catBars}</div></div></div>`;
+}
+function statCard(ico,value,label){ return `<div class="card stat"><span class="stat__ico">${ico}</span><div class="stat__value">${value}</div><div class="stat__label">${label}</div></div>`; }
+function barRow(label,val,max,color,valLabel){ const pct=Math.round((Number(val)/max)*100); return `<div class="bar-row"><span class="bar-label">${esc(label)}</span><span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${color}"></span></span><strong style="min-width:52px;text-align:right">${valLabel!=null?valLabel:val}</strong></div>`; }
+
+/* 6.1b CLIMA (aba dedicada) */
+let wxPark='mk';
+function renderWeather(){
+  return `<div class="page-head"><div><h2>Previsão do Tempo ☀️</h2><p>Dados reais via Open-Meteo · Orlando (7 dias)</p></div>
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn btn--sm" onclick="toggleTempUnit()">${state.settings.tempUnit==='F'?'Mudar p/ °C':'Mudar p/ °F'}</button><button class="btn btn--sm btn--primary" onclick="reloadWeather()">🔄 Atualizar</button></div></div>
+  <div class="chip-row">${state.parks.map(p=>chip(p.icon+' '+p.name,p.id,wxPark,`wxPark='${p.id}';loadWeatherInto('wxMain','${p.id}')`)).join('')}</div>
+  <div class="wx-card" id="wxMain" style="margin-bottom:16px"></div>
+  <div class="notice"><span>☔</span><span>Vê chance alta de chuva? Confira o <a href="#" onclick="navigateTo('rain');return false">Plano de Chuva</a> para atividades cobertas.</span></div>`;
+}
+window.reloadWeather=function(){ delete WX_CACHE[wxPark]; loadWeatherInto('wxMain',wxPark); toast('🔄 Atualizando previsão…'); };
+window.toggleTempUnit=function(){ state.settings.tempUnit=state.settings.tempUnit==='F'?'C':'F'; saveState(); Object.keys(WX_CACHE).forEach(k=>delete WX_CACHE[k]); render('weather'); };
+
+/* 6.2 PARQUES */
+function renderParks(){ const cards=state.parks.filter(p=>state.settings.group==='ambos'||p.group===capitalize(state.settings.group)).map(p=>{ const nAttr=state.attractions.filter(a=>a.park===p.id).length, nRest=state.restaurants.filter(r=>r.park===p.id).length, nChar=state.characters.filter(c=>c.park===p.id).length, badge=p.group==='Disney'?'badge--disney':'badge--universal'; return `<div class="card" style="border-top:5px solid ${p.color}"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:2rem">${p.icon}</span><div><h3>${esc(p.name)}</h3><span class="badge ${badge}">${p.group}</span></div></div><p class="muted">🕐 ${p.hours}</p><div style="display:flex;gap:14px;margin-top:12px;flex-wrap:wrap"><div><strong>${nAttr}</strong><br><span class="tiny">atrações</span></div><div><strong>${nRest}</strong><br><span class="tiny">restaurantes</span></div><div><strong>${nChar}</strong><br><span class="tiny">personagens</span></div></div><div class="card-actions"><button class="btn btn--sm btn--primary" onclick="viewParkAttractions('${p.id}')">🎢 Ver atrações</button><button class="btn btn--sm" onclick="mapPark='${p.id}';gmapMode=true;navigateTo('map')">🗺️ Mapa</button><button class="btn btn--sm" onclick="addParkToItinerary('${p.id}')">➕ Roteiro</button></div></div>`; }).join(''); return `<div class="page-head"><div><h2>Parques</h2><p>Disney & Universal Orlando</p></div></div><div class="grid grid--cards">${cards}</div>`; }
+window.viewParkAttractions=function(pid){ attrFilters.park=pid; navigateTo('attractions'); };
+window.addParkToItinerary=function(pid){ const p=parkById(pid); state.itinerary.push({id:uid(),day:'Dia '+(state.itinerary.length+1),date:'',park:pid,start:(p.hours.split(' - ')[0]||'09:00'),end:(p.hours.split(' - ')[1]||'21:00'),items:[]}); saveState(); toast('Parque adicionado como novo dia no roteiro'); navigateTo('itinerary'); };
+
+/* 6.3 ATRAÇÕES */
+let attrFilters={park:'',cat:'',intensity:'',status:'',view:'',q:''};
+function renderAttractions(){
+  const cats=[...new Set(state.attractions.map(a=>a.cat))]; const intens=['Baixa','Média','Alta'];
+  let list=state.attractions.filter(a=>{ if(attrFilters.park&&a.park!==attrFilters.park)return false; if(attrFilters.cat&&a.cat!==attrFilters.cat)return false; if(attrFilters.intensity&&a.intensity!==attrFilters.intensity)return false; if(attrFilters.status&&a.status!==attrFilters.status)return false; if(attrFilters.view==='fav'&&!a.fav)return false; if(attrFilters.view==='done'&&!a.done)return false; if(attrFilters.q){const q=attrFilters.q.toLowerCase();if(!(a.name.toLowerCase().includes(q)||parkName(a.park).toLowerCase().includes(q)))return false;} return true; });
+  if(attrFilters.view==='queue')list=list.slice().sort((a,b)=>a.wait-b.wait);
+  const cards=list.map(a=>attractionCard(a)).join('')||emptyState('Nenhuma atração encontrada com esses filtros.');
+  return `<div class="page-head"><div><h2>Atrações</h2><p>${list.length} de ${state.attractions.length} atrações</p></div><button class="btn btn--primary" onclick="atualizarTemposDeFila()">${state.settings.liveQueue?'🔄 Atualizar (ao vivo)':'🎲 Atualizar filas'}</button></div>${queueNotice()}
+  <div class="toolbar"><input type="text" id="attrSearch" placeholder="🔎 Buscar atração…" value="${esc(attrFilters.q)}" aria-label="Buscar atração" oninput="attrFilters.q=this.value;render('attractions');document.getElementById('attrSearch').focus()"><select aria-label="Filtrar por parque" onchange="attrFilters.park=this.value;render('attractions')"><option value="">Todos os parques</option>${state.parks.map(p=>`<option value="${p.id}" ${attrFilters.park===p.id?'selected':''}>${p.name}</option>`).join('')}</select><select aria-label="Filtrar por categoria" onchange="attrFilters.cat=this.value;render('attractions')"><option value="">Todas as categorias</option>${cats.map(c=>`<option ${attrFilters.cat===c?'selected':''}>${c}</option>`).join('')}</select><select aria-label="Filtrar por intensidade" onchange="attrFilters.intensity=this.value;render('attractions')"><option value="">Toda intensidade</option>${intens.map(c=>`<option ${attrFilters.intensity===c?'selected':''}>${c}</option>`).join('')}</select><select aria-label="Filtrar por status" onchange="attrFilters.status=this.value;render('attractions')"><option value="">Todos os status</option><option value="aberta" ${attrFilters.status==='aberta'?'selected':''}>Aberta</option><option value="fechada" ${attrFilters.status==='fechada'?'selected':''}>Fechada</option><option value="manutencao" ${attrFilters.status==='manutencao'?'selected':''}>Manutenção</option></select></div>
+  <div class="chip-row">${chip('Todas','',attrFilters.view,"attrFilters.view='';render('attractions')")}${chip('⭐ Favoritas','fav',attrFilters.view,"attrFilters.view='fav';render('attractions')")}${chip('✅ Concluídas','done',attrFilters.view,"attrFilters.view='done';render('attractions')")}${chip('⏱️ Menor fila','queue',attrFilters.view,"attrFilters.view='queue';render('attractions')")}</div>
+  <div class="grid grid--cards">${cards}</div>`;
+}
+function attractionCard(a){ const qc=queueClass(a.wait), groupBadge=parkGroup(a.park)==='Disney'?'badge--disney':'badge--universal'; const statusTxt={aberta:'🟢 Aberta',fechada:'⛔ Fechada',manutencao:'🛠️ Manutenção'}[a.status]; const liveInfo=a.live?`<span class="badge badge--live">🟢 ao vivo</span>`:''; const upd=a.live&&a.lastUpdated?`<span class="tiny"> · atualizado ${relTime(a.lastUpdated)}</span>`:(a.live?'':'<span class="tiny"> (sim.)</span>'); return `<div class="card"><div class="placeholder-img" style="background:linear-gradient(135deg,${parkById(a.park)?.color||'#1f6feb'},var(--universal-purple))">🎢</div><div style="display:flex;justify-content:space-between;align-items:start;gap:6px"><h3>${esc(a.name)} ${a.fav?'⭐':''}</h3></div><p class="muted">${parkIcon(a.park)} ${parkName(a.park)} · ${esc(a.zone)}</p><div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0"><span class="badge ${groupBadge}">${parkGroup(a.park)}</span><span class="badge">${esc(a.cat)}</span><span class="badge">💥 ${a.intensity}</span><span class="badge">📏 ${a.minH}</span>${a.pass&&a.pass!=='—'?`<span class="badge">⚡ ${esc(a.pass)}</span>`:''}</div><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px"><span class="badge ${qc}">${queueLabel(a.wait)} ${a.wait} min</span><span class="tiny">${statusTxt} · ${esc(a.dur)}</span></div><div style="margin-top:6px">${liveInfo}${upd}</div>${a.note?`<p class="tiny" style="margin-top:8px">📌 ${esc(a.note)}</p>`:''}<div class="card-actions"><button class="btn btn--sm" onclick="toggleField('attractions','${a.id}','fav')" aria-pressed="${a.fav}">${a.fav?'★ Favorito':'☆ Favoritar'}</button><button class="btn btn--sm ${a.done?'btn--primary':''}" onclick="toggleField('attractions','${a.id}','done')" aria-pressed="${a.done}">${a.done?'✅ Concluída':'Concluir'}</button><button class="btn btn--sm" onclick="addAttractionToItinerary('${a.id}')">➕ Roteiro</button><button class="btn btn--sm" onclick="editObs('attractions','${a.id}')">📝 Nota</button></div></div>`; }
+function chip(label,val,current,onclick){ return `<button class="chip ${current===val?'active':''}" onclick="${onclick}">${label}</button>`; }
+function emptyState(msg){ return `<div class="empty" style="grid-column:1/-1"><span class="big">🔍</span>${esc(msg)}</div>`; }
+window.editObs=function(coll,id){ const it=state[coll].find(x=>x.id===id); openModal('Observação pessoal',`<div class="form-row"><label for="obsField">Anotação sobre "${esc(it.name)}"</label><textarea id="obsField">${esc(it.note||'')}</textarea></div><button class="btn btn--primary btn--block" onclick="saveObs('${coll}','${id}')">Salvar</button>`); };
+window.saveObs=function(coll,id){ const it=state[coll].find(x=>x.id===id); it.note=$('#obsField').value; saveState(); closeModal(); render(currentPage); toast('Observação salva'); };
+
+/* 6.4 PERSONAGENS */
+let charFilters={park:'',status:'',q:''};
+function renderCharacters(){ let list=state.characters.filter(c=>{ if(charFilters.park&&c.park!==charFilters.park)return false; if(charFilters.status&&c.status!==charFilters.status)return false; if(charFilters.q&&!c.name.toLowerCase().includes(charFilters.q.toLowerCase()))return false; return true; }); const cards=list.map(c=>{ const st={'nao-planejado':'⚪ Não planejado','planejado':'🔵 Planejado','concluido':'✅ Concluído'}[c.status]; const gb=parkGroup(c.park)==='Disney'?'badge--disney':'badge--universal'; return `<div class="card"><div class="placeholder-img" style="background:linear-gradient(135deg,#e3b23c,#e0384f)">🧑‍🎤</div><h3>${esc(c.name)} ${c.fav?'⭐':''} ${c.photo?'📸':''}</h3><p class="muted">${parkIcon(c.park)} ${parkName(c.park)} · ${esc(c.zone)}</p><div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0"><span class="badge ${gb}">${parkGroup(c.park)}</span><span class="badge">🕐 ${esc(c.time)}</span><span class="badge">⏱️ ${esc(c.wait)}</span></div><p class="tiny">${st}</p>${c.note?`<p class="tiny" style="margin-top:6px">📌 ${esc(c.note)}</p>`:''}<div class="card-actions"><button class="btn btn--sm ${c.status!=='nao-planejado'?'btn--primary':''}" onclick="planChar('${c.id}')">📷 Quero foto</button><button class="btn btn--sm ${c.photo?'btn--primary':''}" onclick="photoTaken('${c.id}')">${c.photo?'📸 Foto tirada':'Marcar foto'}</button><button class="btn btn--sm" onclick="toggleField('characters','${c.id}','fav')">${c.fav?'★':'☆'} Favorito</button><button class="btn btn--sm" onclick="addItemToItinerary('personagem','Encontro: ${esc(c.name)}','${c.park}','${esc(c.zone)}')">➕ Roteiro</button><button class="btn btn--sm" onclick="editObs('characters','${c.id}')">📝 Nota</button></div></div>`; }).join('')||emptyState('Nenhum personagem encontrado.'); return `<div class="page-head"><div><h2>Personagens</h2><p>Encontros fotográficos — ${list.length} personagens</p></div></div><div class="toolbar"><input type="text" placeholder="🔎 Buscar personagem…" value="${esc(charFilters.q)}" aria-label="Buscar personagem" oninput="charFilters.q=this.value;render('characters')"><select aria-label="Filtrar por parque" onchange="charFilters.park=this.value;render('characters')"><option value="">Todos os parques</option>${state.parks.map(p=>`<option value="${p.id}" ${charFilters.park===p.id?'selected':''}>${p.name}</option>`).join('')}</select><select aria-label="Filtrar por status" onchange="charFilters.status=this.value;render('characters')"><option value="">Todos os status</option><option value="nao-planejado" ${charFilters.status==='nao-planejado'?'selected':''}>Não planejado</option><option value="planejado" ${charFilters.status==='planejado'?'selected':''}>Planejado</option><option value="concluido" ${charFilters.status==='concluido'?'selected':''}>Concluído</option></select></div><div class="grid grid--cards">${cards}</div>`; }
+window.planChar=function(id){ const c=state.characters.find(x=>x.id===id); c.status=c.status==='nao-planejado'?'planejado':'nao-planejado'; saveState(); render('characters'); refreshDashboardIfNeeded(); };
+window.photoTaken=function(id){ const c=state.characters.find(x=>x.id===id); c.photo=!c.photo; if(c.photo)c.status='concluido'; saveState(); render('characters'); refreshDashboardIfNeeded(); toast(c.photo?'📸 Foto marcada!':'Foto desmarcada'); };
+
+/* 6.5 RESTAURANTES */
+let restFilters={park:'',status:'',q:''};
+function renderRestaurants(){ let list=state.restaurants.filter(r=>{ if(restFilters.park&&r.park!==restFilters.park)return false; if(restFilters.status&&r.status!==restFilters.status)return false; if(restFilters.q&&!r.name.toLowerCase().includes(restFilters.q.toLowerCase()))return false; return true; }); const cards=list.map(r=>{ const st={'quero-ir':'🎯 Quero ir','reservado':'📅 Reservado','visitado':'✅ Visitado'}[r.status]; const gb=parkGroup(r.park)==='Disney'?'badge--disney':'badge--universal'; return `<div class="card"><div class="placeholder-img" style="background:linear-gradient(135deg,#22a06b,#1f6feb)">🍽️</div><h3>${esc(r.name)} ${r.fav?'⭐':''}</h3><p class="muted">${parkIcon(r.park)} ${parkName(r.park)} · ${esc(r.zone)}</p><div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0"><span class="badge ${gb}">${parkGroup(r.park)}</span><span class="badge">🍴 ${esc(r.food)}</span><span class="badge">${esc(r.price)}</span><span class="badge">${esc(r.service)}</span>${r.reserva?'<span class="badge">📅 Reserva</span>':''}${r.mobile?'<span class="badge">📱 Mobile order</span>':''}</div><p class="tiny">${st}${r.rating?` · ⭐ ${r.rating}/5`:''}</p>${r.note?`<p class="tiny" style="margin-top:6px">📌 ${esc(r.note)}</p>`:''}<div class="card-actions"><button class="btn btn--sm" onclick="toggleField('restaurants','${r.id}','fav')">${r.fav?'★':'☆'} Favorito</button><button class="btn btn--sm" onclick="cycleRestStatus('${r.id}')">🔄 ${st}</button><button class="btn btn--sm" onclick="rateRest('${r.id}')">⭐ Avaliar</button><button class="btn btn--sm" onclick="addItemToItinerary('restaurante','${esc(r.name)}','${r.park}','${esc(r.zone)}')">➕ Roteiro</button><button class="btn btn--sm" onclick="editObs('restaurants','${r.id}')">📝 Nota</button></div></div>`; }).join('')||emptyState('Nenhum restaurante encontrado.'); return `<div class="page-head"><div><h2>Restaurantes</h2><p>${list.length} restaurantes</p></div></div><div class="toolbar"><input type="text" placeholder="🔎 Buscar restaurante…" value="${esc(restFilters.q)}" aria-label="Buscar restaurante" oninput="restFilters.q=this.value;render('restaurants')"><select aria-label="Filtrar por parque" onchange="restFilters.park=this.value;render('restaurants')"><option value="">Todos os parques</option>${state.parks.map(p=>`<option value="${p.id}" ${restFilters.park===p.id?'selected':''}>${p.name}</option>`).join('')}</select><select aria-label="Filtrar por status" onchange="restFilters.status=this.value;render('restaurants')"><option value="">Todos os status</option><option value="quero-ir" ${restFilters.status==='quero-ir'?'selected':''}>Quero ir</option><option value="reservado" ${restFilters.status==='reservado'?'selected':''}>Reservado</option><option value="visitado" ${restFilters.status==='visitado'?'selected':''}>Visitado</option></select></div><div class="grid grid--cards">${cards}</div>`; }
+window.cycleRestStatus=function(id){ const r=state.restaurants.find(x=>x.id===id); const o=['quero-ir','reservado','visitado']; r.status=o[(o.indexOf(r.status)+1)%o.length]; saveState(); render('restaurants'); refreshDashboardIfNeeded(); };
+window.rateRest=function(id){ const r=state.restaurants.find(x=>x.id===id); const v=prompt('Avaliação de 0 a 5 para '+r.name+':',r.rating||''); if(v!==null){ r.rating=Math.max(0,Math.min(5,Number(v)||0)); saveState(); render('restaurants'); } };
+
+/* 6.6 ROTEIRO */
+function itineraryQueueBadge(it){ if(it.type!=='atracao'||it.wait==null||it.wait==='')return ''; const w=Number(it.wait)||0; return `<span class="badge ${queueClass(w)}" style="margin-left:6px">${queueLabel(w)} ${w} min${it.live?' · ao vivo':' (sim.)'}</span>`; }
+function renderItinerary(){ const days=state.itinerary; const dayTabs=days.map(d=>`<button class="chip ${state.settings.currentDay===d.id?'active':''}" onclick="setCurrentDay('${d.id}')">${esc(d.day)} · ${parkIcon(d.park)}</button>`).join(''); const day=days.find(d=>d.id===state.settings.currentDay)||days[0]; if(!day)return `<div class="page-head"><div><h2>Roteiro</h2></div></div><div class="empty"><span class="big">🗓️</span>Nenhum dia criado ainda.<br><br><button class="btn btn--primary" onclick="addDay()">➕ Criar primeiro dia</button></div>`; const total=day.items.length, done=day.items.filter(i=>i.status==='concluido').length, pct=total?Math.round(done/total*100):0; const typeIcon={atracao:'🎢',restaurante:'🍽️',personagem:'🧑‍🎤',show:'🎭',pausa:'☕',compra:'🛍️',deslocamento:'🚶',manual:'📌'}; const items=day.items.map(it=>`<li class="tl-item ${it.status==='concluido'?'done':''}" draggable="true" data-id="${it.id}"><span class="tl-time">${it.time||'--:--'}</span><div class="tl-body"><h4>${typeIcon[it.type]||'📌'} ${esc(it.name)} ${it.status==='concluido'?'✅':''}${itineraryQueueBadge(it)}</h4><p class="tiny">${capitalize(it.type)} · ${parkName(it.park)} · ${esc(it.zone||'—')} ${it.doneAt?'· concluído '+it.doneAt:''}</p>${it.note?`<p class="tiny">📌 ${esc(it.note)}</p>`:''}<div class="tl-actions"><button class="btn btn--sm ${it.status==='concluido'?'btn--primary':''}" onclick="toggleItemDone('${day.id}','${it.id}')">${it.status==='concluido'?'✅ Concluído':'Concluir'}</button><button class="btn btn--sm" onclick="moveItem('${day.id}','${it.id}',-1)" aria-label="Mover para cima">⬆️</button><button class="btn btn--sm" onclick="moveItem('${day.id}','${it.id}',1)" aria-label="Mover para baixo">⬇️</button><button class="btn btn--sm" onclick="editItem('${day.id}','${it.id}')">✏️ Editar</button><button class="btn btn--sm" onclick="duplicateItem('${day.id}','${it.id}')">📋 Duplicar</button><button class="btn btn--sm btn--danger" onclick="deleteItem('${day.id}','${it.id}')">🗑️</button></div></div></li>`).join('')||emptyState('Nenhuma atividade neste dia. Adicione a primeira!'); return `<div class="page-head"><div><h2>Roteiro da Viagem</h2><p>Organize cada dia da sua viagem</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="addDay()">➕ Novo dia</button><button class="btn btn--primary" onclick="optimizeDay()">✨ Otimizar roteiro</button></div></div><div class="chip-row">${dayTabs}</div><div class="card" style="margin-bottom:16px"><div class="form-grid"><div class="form-row"><label>Nome do dia</label><input type="text" value="${esc(day.day)}" onchange="updateDay('${day.id}','day',this.value)"></div><div class="form-row"><label>Data</label><input type="date" value="${day.date}" onchange="updateDay('${day.id}','date',this.value)"></div><div class="form-row"><label>Parque principal</label><select onchange="updateDay('${day.id}','park',this.value)">${state.parks.map(p=>`<option value="${p.id}" ${day.park===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div><div class="form-row"><label>Início</label><input type="time" value="${day.start}" onchange="updateDay('${day.id}','start',this.value)"></div><div class="form-row"><label>Saída</label><input type="time" value="${day.end}" onchange="updateDay('${day.id}','end',this.value)"></div></div><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="progress"><div class="progress__bar" style="width:${pct}%"></div></div><p class="tiny" style="margin-top:6px">${done}/${total} concluídos (${pct}%)</p></div><button class="btn btn--danger btn--sm" onclick="deleteDay('${day.id}')">🗑️ Excluir dia</button></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn--sm" onclick="addItemModal('${day.id}','atracao')">🎢 Atração</button><button class="btn btn--sm" onclick="addItemModal('${day.id}','restaurante')">🍽️ Restaurante</button><button class="btn btn--sm" onclick="addItemModal('${day.id}','personagem')">🧑‍🎤 Personagem</button><button class="btn btn--sm" onclick="addItemModal('${day.id}','show')">🎭 Show</button><button class="btn btn--sm" onclick="addItemModal('${day.id}','pausa')">☕ Pausa</button><button class="btn btn--sm" onclick="addItemModal('${day.id}','compra')">🛍️ Compra</button><button class="btn btn--sm" onclick="addItemModal('${day.id}','deslocamento')">🚶 Deslocamento</button><button class="btn btn--sm" onclick="addItemModal('${day.id}','manual')">📌 Manual</button></div><p class="tiny" style="margin-bottom:8px">💡 Arraste os cards para reordenar (ou use ⬆️⬇️ no celular). Atrações mostram o tempo de fila 🟢🟡🟠🔴.</p><ul class="timeline" id="timeline" data-day="${day.id}">${items}</ul>`; }
+window.setCurrentDay=function(id){ state.settings.currentDay=id; saveState(); render('itinerary'); };
+window.updateDay=function(dayId,field,val){ const d=state.itinerary.find(x=>x.id===dayId); d[field]=val; saveState(); if(field==='park'||field==='day')render('itinerary'); refreshDashboardIfNeeded(); };
+window.addDay=function(){ const nd={id:uid(),day:'Dia '+(state.itinerary.length+1),date:'',park:state.parks[0].id,start:'09:00',end:'21:00',items:[]}; state.itinerary.push(nd); state.settings.currentDay=nd.id; saveState(); render('itinerary'); toast('Novo dia criado'); };
+window.deleteDay=function(dayId){ if(!confirm('Excluir este dia e todas as suas atividades?'))return; state.itinerary=state.itinerary.filter(d=>d.id!==dayId); if(state.settings.currentDay===dayId)state.settings.currentDay=state.itinerary[0]?.id||''; saveState(); render('itinerary'); refreshDashboardIfNeeded(); };
+window.toggleItemDone=function(dayId,itemId){ const d=state.itinerary.find(x=>x.id===dayId); const it=d.items.find(i=>i.id===itemId); if(it.status==='concluido'){it.status='pendente';it.doneAt='';}else{it.status='concluido';it.doneAt=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});} saveState(); render('itinerary'); refreshDashboardIfNeeded(); };
+window.moveItem=function(dayId,itemId,dir){ const d=state.itinerary.find(x=>x.id===dayId); const i=d.items.findIndex(x=>x.id===itemId); const j=i+dir; if(j<0||j>=d.items.length)return; [d.items[i],d.items[j]]=[d.items[j],d.items[i]]; saveState(); render('itinerary'); };
+window.deleteItem=function(dayId,itemId){ const d=state.itinerary.find(x=>x.id===dayId); d.items=d.items.filter(i=>i.id!==itemId); saveState(); render('itinerary'); refreshDashboardIfNeeded(); };
+window.duplicateItem=function(dayId,itemId){ const d=state.itinerary.find(x=>x.id===dayId); const it=d.items.find(i=>i.id===itemId); const copy=Object.assign({},it,{id:uid(),status:'pendente',doneAt:''}); d.items.splice(d.items.indexOf(it)+1,0,copy); saveState(); render('itinerary'); toast('Item duplicado'); };
+window.addItemModal=function(dayId,type){ itemModal(dayId,null,type); };
+window.editItem=function(dayId,itemId){ const d=state.itinerary.find(x=>x.id===dayId); const it=d.items.find(i=>i.id===itemId); itemModal(dayId,it,it.type); };
+function itemModal(dayId,item,type){ openModal(item?'Editar item':'Adicionar '+type,`<div class="form-row"><label>Nome / atividade</label><input id="itName" value="${esc(item?.name||'')}"></div><div class="form-grid"><div class="form-row"><label>Horário</label><input id="itTime" type="time" value="${item?.time||''}"></div><div class="form-row"><label>Tipo</label><select id="itType">${['atracao','restaurante','personagem','show','pausa','compra','deslocamento','manual'].map(t=>`<option value="${t}" ${type===t?'selected':''}>${capitalize(t)}</option>`).join('')}</select></div></div><div class="form-grid"><div class="form-row"><label>Parque</label><select id="itPark">${state.parks.map(p=>`<option value="${p.id}" ${item?.park===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div><div class="form-row"><label>Área</label><input id="itZone" value="${esc(item?.zone||'')}"></div></div><div class="form-row"><label>Observações</label><textarea id="itNote">${esc(item?.note||'')}</textarea></div><button class="btn btn--primary btn--block" onclick="saveItem('${dayId}','${item?item.id:''}')">Salvar</button>`); }
+window.saveItem=function(dayId,itemId){ const d=state.itinerary.find(x=>x.id===dayId); const data={name:$('#itName').value||'(sem nome)',time:$('#itTime').value,type:$('#itType').value,park:$('#itPark').value,zone:$('#itZone').value,note:$('#itNote').value}; if(itemId){Object.assign(d.items.find(i=>i.id===itemId),data);}else{d.items.push(Object.assign({id:uid(),status:'pendente',doneAt:''},data));} const savedIt=itemId?d.items.find(i=>i.id===itemId):d.items[d.items.length-1]; if(savedIt.type==='atracao'){ const a=state.attractions.find(x=>normalizeName(x.name)===normalizeName(savedIt.name)); if(a){ savedIt.wait=a.wait; savedIt.live=a.live; } } d.items.sort((a,b)=>(a.time||'99').localeCompare(b.time||'99')); saveState(); closeModal(); render('itinerary'); refreshDashboardIfNeeded(); toast('Item salvo'); };
+window.addItemToItinerary=function(type,name,park,zone,wait,live){ let day=state.itinerary.find(d=>d.id===state.settings.currentDay)||state.itinerary[0]; if(!day){addDay();day=state.itinerary[0];} const it={id:uid(),name,type,park,zone,time:'',status:'pendente',note:'',doneAt:''}; if(type==='atracao'){ it.wait=(wait!=null?wait:''); it.live=!!live; } day.items.push(it); saveState(); toast('➕ Adicionado ao '+day.day+(type==='atracao'&&wait!=null?` · fila ${wait} min`:'')); refreshDashboardIfNeeded(); };
+window.addAttractionToItinerary=function(aid){ const a=state.attractions.find(x=>x.id===aid); if(!a)return; addItemToItinerary('atracao',a.name,a.park,a.zone,a.wait,a.live); };
+window.optimizeDay=function(){ const d=state.itinerary.find(x=>x.id===state.settings.currentDay)||state.itinerary[0]; if(!d||!d.items.length){toast('Nada para otimizar.');return;} const fixed=d.items.filter(i=>i.status==='concluido'||i.type==='restaurante'||i.type==='show'); const flexible=d.items.filter(i=>!(i.status==='concluido'||i.type==='restaurante'||i.type==='show')); flexible.forEach(i=>{const a=state.attractions.find(x=>x.name===i.name);i._prio=a?({alta:0,media:1,baixa:2}[a.priority]):1;i._wait=(i.wait!=null&&i.wait!=='')?Number(i.wait):(a?Number(a.wait||0):999);i._zone=i.zone||'';}); flexible.sort((a,b)=>{if(a._zone!==b._zone)return a._zone.localeCompare(b._zone);if(a._prio!==b._prio)return a._prio-b._prio;return a._wait-b._wait;}); d.items=[...fixed,...flexible].map(i=>{delete i._prio;delete i._wait;delete i._zone;return i;}); saveState(); render('itinerary'); openModal('✨ Roteiro otimizado',`<p>Reorganizamos o roteiro de <strong>${esc(d.day)}</strong> usando lógica simulada:</p><ul style="margin:12px 0 12px 18px;font-size:.88rem;line-height:1.7"><li>Restaurantes e shows (horário fixo) mantidos.</li><li>Itens concluídos não movidos.</li><li>Atrações agrupadas por <strong>área do parque</strong>.</li><li>Alta prioridade e <strong>filas menores</strong> primeiro.</li></ul><button class="btn btn--primary btn--block" style="margin-top:12px" onclick="closeModal()">Entendi</button>`); };
+function wireItinerary(){ const tl=$('#timeline'); if(!tl)return; const dayId=tl.dataset.day; let dragEl=null; tl.querySelectorAll('.tl-item').forEach(li=>{ li.addEventListener('dragstart',e=>{dragEl=li;li.classList.add('dragging');e.dataTransfer.effectAllowed='move';}); li.addEventListener('dragend',()=>{li.classList.remove('dragging');tl.querySelectorAll('.tl-item').forEach(x=>x.classList.remove('drag-over'));}); li.addEventListener('dragover',e=>{e.preventDefault();li.classList.add('drag-over');}); li.addEventListener('dragleave',()=>li.classList.remove('drag-over')); li.addEventListener('drop',e=>{e.preventDefault();li.classList.remove('drag-over');if(!dragEl||dragEl===li)return;const d=state.itinerary.find(x=>x.id===dayId);const from=d.items.findIndex(i=>i.id===dragEl.dataset.id);const to=d.items.findIndex(i=>i.id===li.dataset.id);const[m]=d.items.splice(from,1);d.items.splice(to,0,m);saveState();render('itinerary');}); }); }
+
+/* 6.7 MAPA — simplificado (zonas) + GOOGLE MAPS real (embed) */
+let mapPark='mk', gmapMode=true; // gmapMode=true mostra o Google Maps real por padrão
+function renderMap(){ const p=parkById(mapPark)||state.parks[0];
+  let body;
+  if(gmapMode){
+    // Google Maps oficial via iframe embed (sem API key)
+    body=`<div class="gmap-wrap"><iframe title="Mapa de ${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${gmapEmbedUrl(p.lat,p.lng,15)}"></iframe></div>
+      <p class="tiny" style="margin-top:10px">📍 ${esc(p.name)} · <a href="${gmapLinkUrl(p.lat,p.lng)}" target="_blank" rel="noopener">Abrir no Google Maps</a> · Mapa © Google</p>`;
+  } else {
+    const zones=p.zones.map((z,i)=>{ const attrs=state.attractions.filter(a=>a.park===p.id&&a.zone===z), rests=state.restaurants.filter(r=>r.park===p.id&&r.zone===z), chars=state.characters.filter(c=>c.park===p.id&&c.zone===z); const hue=(i*47)%360; const bg=`linear-gradient(135deg,hsl(${hue},55%,45%),hsl(${(hue+40)%360},55%,35%))`; const markers=[...attrs.map(a=>`<button class="marker" onclick="mapMarker('atracao','${a.id}')">🎢 ${esc(a.name)} (${a.wait}m)</button>`),...rests.map(r=>`<button class="marker" onclick="mapMarker('restaurante','${r.id}')">🍽️ ${esc(r.name)}</button>`),...chars.map(c=>`<button class="marker" onclick="mapMarker('personagem','${c.id}')">🧑‍🎤 ${esc(c.name)}</button>`)].join('')||'<span class="tiny" style="opacity:.85">Sem marcadores</span>'; return `<div class="zone" style="background:${bg}"><h4>${esc(z)}</h4>${markers}</div>`; }).join('');
+    body=`<div class="map-grid">${zones}</div>`;
+  }
+  return `<div class="page-head"><div><h2>Mapa dos Parques</h2><p>${gmapMode?'Mapa real via Google Maps':'Zonas simplificadas (com marcadores clicáveis)'}</p></div>
+    <div style="display:flex;gap:8px"><button class="chip ${gmapMode?'active':''}" onclick="gmapMode=true;render('map')">🗺️ Google Maps</button><button class="chip ${!gmapMode?'active':''}" onclick="gmapMode=false;render('map')">🧩 Zonas</button></div></div>
+  <div class="chip-row">${state.parks.map(pp=>chip(pp.icon+' '+pp.name,pp.id,mapPark,`mapPark='${pp.id}';render('map')`)).join('')}</div>
+  ${gmapMode?'':queueNotice()}
+  ${body}`;
+}
+window.mapMarker=function(type,id){ let obj,extra='',extraBtn=''; if(type==='atracao'){obj=state.attractions.find(a=>a.id===id);extra=`<p>⏱️ Fila ${obj.live?'ao vivo':'simulada'}: <strong>${obj.wait} min</strong> ${queueLabel(obj.wait)}</p>`;extraBtn=`<button class="btn btn--sm btn--primary" onclick="addAttractionToItinerary('${id}');closeModal()">➕ Ao roteiro (c/ fila)</button>`;}else if(type==='restaurante'){obj=state.restaurants.find(r=>r.id===id);extra=`<p>🍴 ${esc(obj.food)} · ${esc(obj.price)}</p>`;extraBtn=`<button class="btn btn--sm btn--primary" onclick="addItemToItinerary('restaurante','${esc(obj.name)}','${obj.park}','${esc(obj.zone)}');closeModal()">➕ Ao roteiro</button>`;}else{obj=state.characters.find(c=>c.id===id);extra=`<p>🕐 ${esc(obj.time)}</p>`;extraBtn=`<button class="btn btn--sm btn--primary" onclick="addItemToItinerary('personagem','Encontro: ${esc(obj.name)}','${obj.park}','${esc(obj.zone)}');closeModal()">➕ Ao roteiro</button>`;} const coll=type==='atracao'?'attractions':type==='restaurante'?'restaurants':'characters'; openModal(obj.name,`${extra}<p class="tiny">${parkName(obj.park)} · ${esc(obj.zone)}</p><div class="card-actions" style="margin-top:14px"><button class="btn btn--sm" onclick="toggleField('${coll}','${id}','fav');closeModal()">⭐ Favoritar</button>${extraBtn}</div>`); };
+
+/* 6.8 ANOTAÇÕES */
+const NOTE_CATS=['Planejamento','Atrações','Restaurantes','Compras','Dicas','Transporte','Hotel','Documentos','Outros'];
+let noteFilter={cat:'',q:''};
+function renderNotes(){ let list=state.notes.filter(n=>{ if(noteFilter.cat&&n.category!==noteFilter.cat)return false; if(noteFilter.q){const q=noteFilter.q.toLowerCase();if(!(n.title.toLowerCase().includes(q)||n.content.toLowerCase().includes(q)))return false;} return true; }).sort((a,b)=>b.updated-a.updated); const cards=list.map(n=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(n.title)} ${n.fav?'⭐':''}</h3></div><span class="badge">${esc(n.category)}</span><p class="muted" style="margin:10px 0;white-space:pre-wrap">${esc(n.content)}</p><p class="tiny">Criada: ${new Date(n.created).toLocaleDateString('pt-BR')} · Editada: ${new Date(n.updated).toLocaleDateString('pt-BR')}</p><div class="card-actions"><button class="btn btn--sm" onclick="noteModal('${n.id}')">✏️ Editar</button><button class="btn btn--sm" onclick="toggleField('notes','${n.id}','fav')">${n.fav?'★':'☆'} Favorito</button><button class="btn btn--sm btn--danger" onclick="deleteNote('${n.id}')">🗑️</button></div></div>`).join('')||emptyState('Nenhuma nota. Crie a primeira!'); return `<div class="page-head"><div><h2>Anotações</h2><p>${list.length} notas</p></div><button class="btn btn--primary" onclick="noteModal()">➕ Nova nota</button></div><div class="toolbar"><input type="text" placeholder="🔎 Buscar nota…" value="${esc(noteFilter.q)}" aria-label="Buscar nota" oninput="noteFilter.q=this.value;render('notes')"><select aria-label="Categoria" onchange="noteFilter.cat=this.value;render('notes')"><option value="">Todas as categorias</option>${NOTE_CATS.map(c=>`<option ${noteFilter.cat===c?'selected':''}>${c}</option>`).join('')}</select></div><div class="grid grid--cards">${cards}</div>`; }
+window.noteModal=function(id){ const n=id?state.notes.find(x=>x.id===id):null; openModal(n?'Editar nota':'Nova nota',`<div class="form-row"><label>Título</label><input id="nTitle" value="${esc(n?.title||'')}"></div><div class="form-row"><label>Categoria</label><select id="nCat">${NOTE_CATS.map(c=>`<option ${n?.category===c?'selected':''}>${c}</option>`).join('')}</select></div><div class="form-row"><label>Conteúdo</label><textarea id="nContent">${esc(n?.content||'')}</textarea></div><button class="btn btn--primary btn--block" onclick="saveNote('${id||''}')">Salvar</button>`); };
+window.saveNote=function(id){ const data={title:$('#nTitle').value||'(sem título)',category:$('#nCat').value,content:$('#nContent').value,updated:Date.now()}; if(id){Object.assign(state.notes.find(n=>n.id===id),data);}else{state.notes.push(Object.assign({id:uid(),fav:false,created:Date.now()},data));} saveState(); closeModal(); render('notes'); refreshDashboardIfNeeded(); toast('Nota salva'); };
+window.deleteNote=function(id){ if(!confirm('Excluir esta nota?'))return; state.notes=state.notes.filter(n=>n.id!==id); saveState(); render('notes'); refreshDashboardIfNeeded(); };
+
+/* 6.9 FAVORITOS */
+let favParkFilter='';
+function renderFavorites(){ const fp=favParkFilter; const fA=state.attractions.filter(a=>a.fav&&(!fp||a.park===fp)),fC=state.characters.filter(c=>c.fav&&(!fp||c.park===fp)),fR=state.restaurants.filter(r=>r.fav&&(!fp||r.park===fp)),fN=state.notes.filter(n=>n.fav),fS=state.shopping.filter(s=>s.fav&&(!fp||s.park===fp)); const addBtn=(type,x)=> type==='attractions' ? `<button class="btn btn--sm" onclick="addAttractionToItinerary('${x.id}')">➕</button>` : type!=='notes' ? `<button class="btn btn--sm" onclick="addItemToItinerary('${type==='characters'?'personagem':type==='restaurants'?'restaurante':'compra'}','${esc(x.name||x.title)}','${x.park||''}','${esc(x.zone||'')}')">➕</button>` : ''; const section=(title,items,type)=>items.length?`<div class="card" style="margin-bottom:16px"><h3>${title} (${items.length})</h3><div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">${items.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><span>${esc(x.title||x.name)} <span class="tiny">${x.park?'· '+parkName(x.park):''}</span></span><span style="display:flex;gap:6px">${addBtn(type,x)}<button class="btn btn--sm btn--danger" onclick="unfav('${type}','${x.id}')">✕</button></span></div>`).join('')}</div></div>`:''; const body=[section('🎢 Atrações favoritas',fA,'attractions'),section('🧑‍🎤 Personagens favoritos',fC,'characters'),section('🍽️ Restaurantes favoritos',fR,'restaurants'),section('📝 Notas favoritas',fN,'notes'),section('🛍️ Compras favoritas',fS,'shopping')].join('')||emptyState('Nenhum favorito ainda. Marque itens com ⭐ pelo app.'); return `<div class="page-head"><div><h2>Favoritos</h2><p>Central de tudo que você marcou</p></div></div><div class="toolbar"><select aria-label="Filtrar por parque" onchange="favParkFilter=this.value;render('favorites')"><option value="">Todos os parques</option>${state.parks.map(p=>`<option value="${p.id}" ${favParkFilter===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>${body}`; }
+window.unfav=function(coll,id){ const x=state[coll].find(i=>i.id===id); x.fav=false; saveState(); render('favorites'); refreshDashboardIfNeeded(); };
+
+/* 6.10 GASTOS */
+const EXP_CATS=['Ingressos','Alimentação','Compras','Transporte','Hotel','Estacionamento','Genie+/Lightning Lane/Express Pass','Outros'];
+function renderExpenses(){ const total=state.expenses.reduce((s,e)=>s+Number(e.value||0),0); const byCat={}; state.expenses.forEach(e=>byCat[e.category]=(byCat[e.category]||0)+Number(e.value||0)); const byPark={}; state.expenses.forEach(e=>{if(e.park)byPark[e.park]=(byPark[e.park]||0)+Number(e.value||0);}); const maxCat=Math.max(1,...Object.values(byCat)); const catBars=Object.entries(byCat).map(([c,v])=>barRow(c,v,maxCat,'var(--primary)',fmtMoney(v))).join('')||'<p class="tiny">Sem dados.</p>'; const rows=state.expenses.map(e=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px"><div><strong>${esc(e.desc)}</strong><br><span class="tiny">${esc(e.category)} ${e.park?'· '+parkName(e.park):''} ${e.pay?'· '+esc(e.pay):''} ${e.date?'· '+e.date:''}</span></div><div style="display:flex;gap:8px;align-items:center"><strong>${fmtMoney(e.value)}</strong><button class="btn btn--sm" onclick="expModal('${e.id}')">✏️</button><button class="btn btn--sm btn--danger" onclick="delExp('${e.id}')">🗑️</button></div></div>`).join('')||emptyState('Nenhum gasto registrado.'); return `<div class="page-head"><div><h2>Controle de Gastos</h2><p>Total: <strong>${fmtMoney(total)}</strong> (${state.settings.currency})</p></div><button class="btn btn--primary" onclick="expModal()">➕ Novo gasto</button></div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-bottom:16px"><div class="card stat"><span class="stat__ico">💰</span><div class="stat__value">${fmtMoney(total)}</div><div class="stat__label">Total gasto</div></div><div class="card"><h3>Gastos por categoria</h3><div class="chart-box" style="margin-top:10px">${catBars}</div></div><div class="card"><h3>Gastos por parque</h3><div class="chart-box" style="margin-top:10px">${Object.entries(byPark).map(([p,v])=>barRow(parkName(p),v,Math.max(1,...Object.values(byPark)),parkById(p)?.color||'#888',fmtMoney(v))).join('')||'<p class="tiny">Sem dados por parque.</p>'}</div></div></div><div class="grid" style="gap:10px">${rows}</div>`; }
+window.expModal=function(id){ const e=id?state.expenses.find(x=>x.id===id):null; openModal(e?'Editar gasto':'Novo gasto',`<div class="form-row"><label>Descrição</label><input id="eDesc" value="${esc(e?.desc||'')}"></div><div class="form-grid"><div class="form-row"><label>Valor (${currencySymbol()})</label><input id="eVal" type="number" step="0.01" value="${e?.value||''}"></div><div class="form-row"><label>Categoria</label><select id="eCat">${EXP_CATS.map(c=>`<option ${e?.category===c?'selected':''}>${c}</option>`).join('')}</select></div></div><div class="form-grid"><div class="form-row"><label>Data</label><input id="eDate" type="date" value="${e?.date||''}"></div><div class="form-row"><label>Parque/local</label><select id="ePark"><option value="">—</option>${state.parks.map(p=>`<option value="${p.id}" ${e?.park===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div></div><div class="form-grid"><div class="form-row"><label>Forma de pagamento</label><input id="ePay" value="${esc(e?.pay||'')}" placeholder="Cartão, dinheiro…"></div><div class="form-row"><label>Observação</label><input id="eNote" value="${esc(e?.note||'')}"></div></div><button class="btn btn--primary btn--block" onclick="saveExp('${id||''}')">Salvar</button>`); };
+window.saveExp=function(id){ const data={desc:$('#eDesc').value||'(gasto)',value:Number($('#eVal').value)||0,category:$('#eCat').value,date:$('#eDate').value,park:$('#ePark').value,pay:$('#ePay').value,note:$('#eNote').value}; if(id)Object.assign(state.expenses.find(x=>x.id===id),data);else state.expenses.push(Object.assign({id:uid()},data)); saveState(); closeModal(); render('expenses'); refreshDashboardIfNeeded(); toast('Gasto salvo'); };
+window.delExp=function(id){ if(!confirm('Excluir gasto?'))return; state.expenses=state.expenses.filter(x=>x.id!==id); saveState(); render('expenses'); refreshDashboardIfNeeded(); };
+
+/* 6.11 COMPRAS */
+const SHOP_CATS=['Roupas','Pelúcias','Canecas','Pins','MagicBand','Varinhas','Doces','Presentes','Outros'];
+let shopFilter='';
+function renderShopping(){ let list=state.shopping.filter(s=>!shopFilter||s.park===shopFilter); const totalEst=list.reduce((s,i)=>s+Number(i.value||0),0); const cards=list.map(s=>{ const st={'desejado':'🎯 Desejado','comprado':'✅ Comprado','descartado':'🚫 Descartado'}[s.status]; return `<div class="card"><h3>${esc(s.name)} ${s.fav?'⭐':''}</h3><p class="muted">${esc(s.store)} · ${parkName(s.park)}</p><div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0"><span class="badge">${esc(s.category)}</span><span class="badge">${fmtMoney(s.value)}</span><span class="badge">Prioridade: ${esc(s.priority)}</span></div><p class="tiny">${st}</p>${s.note?`<p class="tiny">📌 ${esc(s.note)}</p>`:''}<div class="card-actions"><button class="btn btn--sm ${s.status==='comprado'?'btn--primary':''}" onclick="markBought('${s.id}')">${s.status==='comprado'?'✅ Comprado':'Marcar comprado'}</button><button class="btn btn--sm" onclick="toggleField('shopping','${s.id}','fav')">${s.fav?'★':'☆'}</button><button class="btn btn--sm" onclick="shopModal('${s.id}')">✏️</button><button class="btn btn--sm btn--danger" onclick="delShop('${s.id}')">🗑️</button></div></div>`; }).join('')||emptyState('Nenhum item de compra.'); return `<div class="page-head"><div><h2>Compras & Souvenirs</h2><p>Total estimado: <strong>${fmtMoney(totalEst)}</strong></p></div><button class="btn btn--primary" onclick="shopModal()">➕ Novo item</button></div><div class="toolbar"><select aria-label="Filtrar por parque" onchange="shopFilter=this.value;render('shopping')"><option value="">Todos os parques</option>${state.parks.map(p=>`<option value="${p.id}" ${shopFilter===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div><div class="grid grid--cards">${cards}</div>`; }
+window.shopModal=function(id){ const s=id?state.shopping.find(x=>x.id===id):null; openModal(s?'Editar item':'Novo item',`<div class="form-row"><label>Nome do item</label><input id="sName" value="${esc(s?.name||'')}"></div><div class="form-grid"><div class="form-row"><label>Loja</label><input id="sStore" value="${esc(s?.store||'')}"></div><div class="form-row"><label>Parque</label><select id="sPark"><option value="">—</option>${state.parks.map(p=>`<option value="${p.id}" ${s?.park===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div></div><div class="form-grid"><div class="form-row"><label>Categoria</label><select id="sCat">${SHOP_CATS.map(c=>`<option ${s?.category===c?'selected':''}>${c}</option>`).join('')}</select></div><div class="form-row"><label>Valor estimado (${currencySymbol()})</label><input id="sVal" type="number" step="0.01" value="${s?.value||''}"></div></div><div class="form-grid"><div class="form-row"><label>Prioridade</label><select id="sPrio">${['alta','media','baixa'].map(p=>`<option ${s?.priority===p?'selected':''}>${p}</option>`).join('')}</select></div><div class="form-row"><label>Status</label><select id="sStatus">${['desejado','comprado','descartado'].map(p=>`<option ${s?.status===p?'selected':''}>${p}</option>`).join('')}</select></div></div><div class="form-row"><label>Observação</label><input id="sNote" value="${esc(s?.note||'')}"></div><button class="btn btn--primary btn--block" onclick="saveShop('${id||''}')">Salvar</button>`); };
+window.saveShop=function(id){ const data={name:$('#sName').value||'(item)',store:$('#sStore').value,park:$('#sPark').value,category:$('#sCat').value,value:Number($('#sVal').value)||0,priority:$('#sPrio').value,status:$('#sStatus').value,note:$('#sNote').value}; if(id)Object.assign(state.shopping.find(x=>x.id===id),data);else state.shopping.push(Object.assign({id:uid(),fav:false},data)); saveState(); closeModal(); render('shopping'); refreshDashboardIfNeeded(); toast('Item salvo'); };
+window.delShop=function(id){ if(!confirm('Excluir item?'))return; state.shopping=state.shopping.filter(x=>x.id!==id); saveState(); render('shopping'); refreshDashboardIfNeeded(); };
+window.markBought=function(id){ const s=state.shopping.find(x=>x.id===id); s.status=s.status==='comprado'?'desejado':'comprado'; if(s.status==='comprado'&&s.value){ if(confirm('Adicionar '+fmtMoney(s.value)+' ao controle de gastos?')){ state.expenses.push({id:uid(),desc:'Compra: '+s.name,value:Number(s.value),category:'Compras',date:'',park:s.park,pay:'',note:'Origem: lista de compras'}); toast('💰 Adicionado aos gastos'); } } saveState(); render('shopping'); refreshDashboardIfNeeded(); };
+
+/* 6.12 PLANO DE CHUVA */
+function renderRainPlan(){ const rp=state.rainPlan; const listBlock=(title,arr,type,ico)=>`<div class="card" style="margin-bottom:14px"><h3>${ico} ${title}</h3><div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">${arr.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span>${esc(x)}</span>${type?`<button class="btn btn--sm" onclick="addItemToItinerary('${type}','${esc(x)}','','')">➕ Roteiro</button>`:''}</div>`).join('')}</div></div>`; return `<div class="page-head"><div><h2>Plano de Chuva ☔</h2><p>Reorganize seu dia em caso de chuva</p></div><button class="btn ${rp.active?'btn--danger':'btn--primary'}" onclick="toggleRain()">${rp.active?'🌤️ Desativar plano':'🌧️ Ativar plano de chuva'}</button></div><div class="notice"><span>☀️</span><span>Veja a <a href="#" onclick="navigateTo('weather');return false">previsão do tempo</a> (Open-Meteo) para decidir se ativa o plano.</span></div>${rp.active?`<div class="notice" style="background:rgba(31,111,235,.12);border-color:rgba(31,111,235,.4);color:var(--primary)"><span>🌧️</span><span>Plano de chuva <strong>ATIVO</strong> — priorize atividades cobertas.</span></div>`:''}${listBlock('Atrações cobertas',rp.coveredAttractions,'atracao','🎢')}${listBlock('Restaurantes cobertos',rp.coveredRestaurants,'restaurante','🍽️')}${listBlock('Shows internos',rp.indoorShows,'show','🎭')}${listBlock('Lojas recomendadas',rp.shops,'compra','🛍️')}${listBlock('Evitar na chuva (ao ar livre)',rp.avoid,'',' ⚠️')}`; }
+window.toggleRain=function(){ state.rainPlan.active=!state.rainPlan.active; saveState(); render('rain'); refreshDashboardIfNeeded(); toast(state.rainPlan.active?'Plano de chuva ativado':'Plano de chuva desativado'); };
+
+/* 6.13 ALERTAS */
+const ALERT_CATS=['Restaurante','Show','Lightning Lane','Express Pass','Personagem','Transporte','Compra','Pausa','Outro'];
+function renderAlerts(){ const list=state.alerts.slice().sort((a,b)=>(a.time||'').localeCompare(b.time||'')); const cards=list.map(a=>{ const done=a.status==='concluido'; return `<div class="card" style="${done?'opacity:.6;':''}border-left:5px solid ${done?'var(--green)':'var(--yellow)'}"><div style="display:flex;justify-content:space-between;gap:8px"><h3>${esc(a.title)}</h3><strong>${a.time||''}</strong></div><span class="badge">${esc(a.category)}</span> ${a.date?`<span class="tiny">${a.date}</span>`:''}${a.desc?`<p class="muted" style="margin-top:8px">${esc(a.desc)}</p>`:''}<div class="card-actions"><button class="btn btn--sm ${done?'btn--primary':''}" onclick="toggleAlert('${a.id}')">${done?'✅ Concluído':'Marcar concluído'}</button><button class="btn btn--sm" onclick="alertModal('${a.id}')">✏️</button><button class="btn btn--sm btn--danger" onclick="delAlert('${a.id}')">🗑️</button></div></div>`; }).join('')||emptyState('Nenhum alerta cadastrado.'); return `<div class="page-head"><div><h2>Alertas & Lembretes</h2><p>${list.filter(a=>a.status==='pendente').length} pendentes</p></div><button class="btn btn--primary" onclick="alertModal()">➕ Novo alerta</button></div><div class="notice"><span>ℹ️</span><span>Estes lembretes são <strong>locais</strong> (não geram notificações push do sistema operacional).</span></div><div class="grid grid--cards">${cards}</div>`; }
+window.alertModal=function(id){ const a=id?state.alerts.find(x=>x.id===id):null; openModal(a?'Editar alerta':'Novo alerta',`<div class="form-row"><label>Título</label><input id="aTitle" value="${esc(a?.title||'')}"></div><div class="form-row"><label>Descrição</label><textarea id="aDesc">${esc(a?.desc||'')}</textarea></div><div class="form-grid"><div class="form-row"><label>Data</label><input id="aDate" type="date" value="${a?.date||''}"></div><div class="form-row"><label>Horário</label><input id="aTime" type="time" value="${a?.time||''}"></div></div><div class="form-row"><label>Categoria</label><select id="aCat">${ALERT_CATS.map(c=>`<option ${a?.category===c?'selected':''}>${c}</option>`).join('')}</select></div><button class="btn btn--primary btn--block" onclick="saveAlert('${id||''}')">Salvar</button>`); };
+window.saveAlert=function(id){ const data={title:$('#aTitle').value||'(alerta)',desc:$('#aDesc').value,date:$('#aDate').value,time:$('#aTime').value,category:$('#aCat').value}; if(id)Object.assign(state.alerts.find(x=>x.id===id),data);else state.alerts.push(Object.assign({id:uid(),status:'pendente'},data)); saveState(); closeModal(); render('alerts'); refreshDashboardIfNeeded(); toast('Alerta salvo'); };
+window.toggleAlert=function(id){ const a=state.alerts.find(x=>x.id===id); a.status=a.status==='concluido'?'pendente':'concluido'; saveState(); render('alerts'); refreshDashboardIfNeeded(); };
+window.delAlert=function(id){ if(!confirm('Excluir alerta?'))return; state.alerts=state.alerts.filter(x=>x.id!==id); saveState(); render('alerts'); refreshDashboardIfNeeded(); };
+
+/* 6.14 GALERIA */
+let galleryFilter='';
+function renderGallery(){ let list=state.photos.filter(p=>!galleryFilter||p.park===galleryFilter); const cards=list.map(p=>`<div class="card photo-card" style="padding:0;overflow:hidden"><img src="${p.src}" alt="${esc(p.title||'foto')}" /><div style="padding:12px"><strong>${esc(p.title||'Sem título')}</strong><p class="tiny">${parkName(p.park)} ${p.rel?'· '+esc(p.rel):''} ${p.date?'· '+p.date:''}</p>${p.note?`<p class="tiny">📌 ${esc(p.note)}</p>`:''}<button class="btn btn--sm btn--danger" style="margin-top:8px" onclick="delPhoto('${p.id}')">🗑️ Excluir</button></div></div>`).join('')||emptyState('Nenhuma foto. Adicione a primeira!'); return `<div class="page-head"><div><h2>Galeria de Fotos</h2><p>${list.length} fotos (salvas localmente)</p></div><button class="btn btn--primary" onclick="document.getElementById('photoInput').click()">📷 Adicionar foto</button></div><input type="file" id="photoInput" accept="image/*" style="display:none" aria-label="Selecionar foto"><div class="notice"><span>ℹ️</span><span>Fotos são salvas em <strong>base64 no localStorage</strong> (limite ~5MB). Para muitas fotos, integre um armazenamento externo autorizado.</span></div><div class="toolbar"><select aria-label="Filtrar por parque" onchange="galleryFilter=this.value;render('gallery')"><option value="">Todos os parques</option>${state.parks.map(p=>`<option value="${p.id}" ${galleryFilter===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div><div class="gallery">${cards}</div>`; }
+function wireGallery(){ const input=$('#photoInput'); if(!input)return; input.addEventListener('change',e=>{ const file=e.target.files[0]; if(!file)return; const reader=new FileReader(); reader.onload=()=>photoDetailsModal(reader.result); reader.readAsDataURL(file); }); }
+function photoDetailsModal(src){ window._pendingPhotoSrc=src; openModal('Detalhes da foto',`<img src="${src}" style="width:100%;border-radius:12px;margin-bottom:12px;max-height:200px;object-fit:cover"><div class="form-row"><label>Título</label><input id="pTitle"></div><div class="form-grid"><div class="form-row"><label>Parque</label><select id="pPark"><option value="">—</option>${state.parks.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div><div class="form-row"><label>Atração/personagem</label><input id="pRel"></div></div><div class="form-row"><label>Observação</label><input id="pNote"></div><button class="btn btn--primary btn--block" onclick="savePhoto()">Salvar</button>`); }
+window.savePhoto=function(){ const src=window._pendingPhotoSrc; if(!src)return; state.photos.push({id:uid(),src,title:$('#pTitle').value,park:$('#pPark').value,rel:$('#pRel').value,note:$('#pNote').value,date:new Date().toLocaleDateString('pt-BR')}); window._pendingPhotoSrc=null; saveState(); closeModal(); render('gallery'); toast('📷 Foto adicionada'); };
+window.delPhoto=function(id){ if(!confirm('Excluir foto?'))return; state.photos=state.photos.filter(p=>p.id!==id); saveState(); render('gallery'); };
+
+/* 6.15 CONFIGURAÇÕES */
+function renderSettings(){ const s=state.settings; return `<div class="page-head"><div><h2>Configurações</h2><p>Preferências e dados do app</p></div></div>
+  <div class="card" style="margin-bottom:16px"><h3>✈️ Viagem</h3><div class="form-grid" style="margin-top:12px"><div class="form-row"><label>Nome da viagem</label><input value="${esc(s.tripName)}" onchange="setSetting('tripName',this.value)"></div><div class="form-row"><label>Moeda padrão</label><select onchange="setSetting('currency',this.value)"><option value="USD" ${s.currency==='USD'?'selected':''}>USD (US$)</option><option value="BRL" ${s.currency==='BRL'?'selected':''}>BRL (R$)</option></select></div><div class="form-row"><label>Data de início</label><input type="date" value="${s.startDate}" onchange="setSetting('startDate',this.value)"></div><div class="form-row"><label>Data de fim</label><input type="date" value="${s.endDate}" onchange="setSetting('endDate',this.value)"></div><div class="form-row"><label>Grupo principal</label><select onchange="setSetting('group',this.value)">${['ambos','disney','universal'].map(g=>`<option value="${g}" ${s.group===g?'selected':''}>${capitalize(g)}</option>`).join('')}</select></div><div class="form-row"><label>Unidade de temperatura</label><select onchange="setSetting('tempUnit',this.value)"><option value="C" ${s.tempUnit==='C'?'selected':''}>Celsius (°C)</option><option value="F" ${s.tempUnit==='F'?'selected':''}>Fahrenheit (°F)</option></select></div></div><div class="form-row"><label>Tema</label><button class="btn btn--sm" onclick="toggleTheme()">${s.theme==='dark'?'☀️ Mudar para claro':'🌙 Mudar para escuro'}</button></div></div>
+  <div class="card" style="margin-bottom:16px"><h3>⏱️ Tempos de fila</h3><p class="tiny" style="margin:8px 0">Escolha a fonte dos tempos de espera das atrações.</p>
+    <div class="form-row"><label><input type="checkbox" ${s.liveQueue?'checked':''} onchange="setSetting('liveQueue',this.checked)" style="width:auto;margin-right:6px">Usar dados AO VIVO do Queue-Times.com</label>${s.liveQueue?'<p class="tiny" style="margin-top:6px"><span class="badge badge--live">🔄 auto a cada 5 min</span> atualização automática ativa.</p>':''}</div>
+    <div class="form-row"><label><input type="checkbox" ${s.simData?'checked':''} onchange="setSetting('simData',this.checked)" style="width:auto;margin-right:6px">Permitir tempos simulados (quando não estiver ao vivo)</label></div>
+    <div class="form-row"><label for="proxyUrlField">URL do proxy CORS (opcional)</label><input id="proxyUrlField" type="url" inputmode="url" placeholder="https://corsproxy.io/?url=https://queue-times.com/parks/{id}/queue_times.json" value="${esc(s.proxyUrl||'')}" onchange="setSetting('proxyUrl',this.value.trim())"><p class="tiny" style="margin-top:6px">Use <code>{id}</code> onde entra o número do parque (ou termine a URL com <code>=</code>). ${s.proxyUrl?'<span class="badge badge--live" style="margin-left:4px">proxy ativo</span>':''}</p></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="btn btn--primary btn--sm" onclick="atualizarTemposDeFila()">${s.liveQueue?'🔄 Buscar agora (ao vivo)':'🎲 Atualizar (simulado)'}</button><button class="btn btn--sm" onclick="testProxy()">🧪 Testar conexão</button>${QT_ATTRIB}</div>
+    <div class="notice" style="margin-top:12px"><span>ℹ️</span><span>A API Real Time do Queue-Times é gratuita e atualiza a cada ~5 min. É <strong>obrigatório</strong> exibir o selo "Powered by Queue-Times.com". Aberto como arquivo local, o navegador pode bloquear por <strong>CORS</strong>; hospede (GitHub Pages) ou use um <strong>proxy CORS</strong>. Não use scraping.</span></div></div>
+  <div class="card" style="margin-bottom:16px"><h3>🗺️ Mapa & ☀️ Clima</h3><p class="tiny" style="margin-top:8px">O <strong>Mapa</strong> usa Google Maps embed (sem chave). O <strong>Clima</strong> usa a API gratuita <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (sem chave, atualiza sob demanda com cache de 30 min). Ambos exigem conexão com a internet.</p></div>
+  <div class="card" style="margin-bottom:16px"><h3>💾 Dados</h3><p class="tiny" style="margin:8px 0">Exporte/importe todos os seus dados em JSON. Faça backup regularmente!</p><div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn btn--primary" onclick="exportData()">⬇️ Exportar JSON</button><button class="btn" onclick="document.getElementById('importFile').click()">⬆️ Importar arquivo</button><button class="btn" onclick="importModal()">📋 Colar JSON</button><button class="btn" onclick="restoreSeed()">🔄 Restaurar exemplo</button><button class="btn btn--danger" onclick="clearAll()">🗑️ Limpar todos os dados</button></div><input type="file" id="importFile" accept="application/json" style="display:none" onchange="importFromFile(event)"></div>
+  <div class="card"><h3>ℹ️ Sobre</h3><p class="tiny" style="margin-top:8px">Magic Trip Dashboard · app local (HTML/CSS/JS). Filas via ${QT_ATTRIB} · Mapa © Google · Clima Open-Meteo. Não afiliado à Disney ou Universal.</p></div>`; }
+window.setSetting=function(k,v){ state.settings[k]=v; saveState(); if(k==='currency'||k==='group'||k==='liveQueue'||k==='tempUnit'){render('settings');} refreshDashboardIfNeeded(); if(k==='liveQueue'){ if(v){ toast('Modo ao vivo ativado — buscando dados… (auto 5 min)'); atualizarTemposDeFila(); startAutoRefresh(); } else { stopAutoRefresh(); toast('Modo ao vivo desativado'); } } else if(k==='tempUnit'){ Object.keys(WX_CACHE).forEach(x=>delete WX_CACHE[x]); toast('Unidade de temperatura alterada'); } else { toast('Configuração salva'); } };
+window.exportData=function(){ const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='magic-trip-dashboard.json'; a.click(); URL.revokeObjectURL(url); toast('⬇️ Dados exportados'); };
+window.importFromFile=function(ev){ const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>applyImport(r.result); r.readAsText(f); };
+window.importModal=function(){ openModal('Importar JSON',`<div class="form-row"><label>Cole aqui o JSON exportado</label><textarea id="importArea" style="min-height:180px"></textarea></div><button class="btn btn--primary btn--block" onclick="applyImport(document.getElementById('importArea').value)">Importar</button>`); };
+function applyImport(text){ try{ const data=JSON.parse(text); state=Object.assign(defaultState(),data); saveState(); closeModal(); applyTheme(); navigateTo('dashboard'); if(state.settings.liveQueue){startAutoRefresh();} toast('✅ Dados importados com sucesso'); }catch(e){ alert('JSON inválido. Verifique o conteúdo.'); } }
+window.applyImport=applyImport;
+window.restoreSeed=function(){ if(!confirm('Restaurar os dados de exemplo? Isso substitui seus dados atuais.'))return; state=defaultState(); saveState(); applyTheme(); navigateTo('dashboard'); toast('Dados de exemplo restaurados'); };
+window.clearAll=function(){ if(!confirm('⚠️ Tem certeza? Isso apagará TODOS os dados salvos e não pode ser desfeito.'))return; localStorage.removeItem(LS_KEY); state=defaultState(); saveState(); applyTheme(); navigateTo('dashboard'); toast('Todos os dados foram limpos'); };
+
+/* BUSCA GLOBAL */
+let globalQuery='';
+function renderSearchResults(){ const q=globalQuery.toLowerCase().trim(); if(!q)return emptyState('Digite algo na busca.'); const inc=(t)=>String(t||'').toLowerCase().includes(q); const rA=state.attractions.filter(a=>inc(a.name)),rC=state.characters.filter(c=>inc(c.name)),rR=state.restaurants.filter(r=>inc(r.name)),rN=state.notes.filter(n=>inc(n.title)||inc(n.content)),rS=state.shopping.filter(s=>inc(s.name)); const total=rA.length+rC.length+rR.length+rN.length+rS.length; const block=(title,arr,page,key)=>arr.length?`<div class="card" style="margin-bottom:14px"><h3>${title} (${arr.length})</h3><div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">${arr.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span>${esc(x[key]||x.title)} <span class="tiny">${x.park?'· '+parkName(x.park):''}</span></span><button class="btn btn--sm" onclick="navigateTo('${page}')">Abrir →</button></div>`).join('')}</div></div>`:''; return `<div class="page-head"><div><h2>Busca: "${esc(globalQuery)}"</h2><p>${total} resultado(s)</p></div></div>${total?'':emptyState('Nada encontrado.')}${block('🎢 Atrações',rA,'attractions','name')}${block('🧑‍🎤 Personagens',rC,'characters','name')}${block('🍽️ Restaurantes',rR,'restaurants','name')}${block('📝 Notas',rN,'notes','title')}${block('🛍️ Compras',rS,'shopping','name')}`; }
+
+/* 7. TEMA, SIDEBAR, INIT */
+function applyTheme(){ document.documentElement.setAttribute('data-theme',state.settings.theme); $('#themeToggle').textContent=state.settings.theme==='dark'?'☀️':'🌙'; }
+function toggleTheme(){ state.settings.theme=state.settings.theme==='dark'?'light':'dark'; saveState(); applyTheme(); if(currentPage==='settings')render('settings'); }
+window.toggleTheme=toggleTheme;
+function openSidebar(){ $('#sidebar').classList.add('open'); $('#backdrop').classList.add('show'); }
+function closeSidebar(){ $('#sidebar').classList.remove('open'); $('#backdrop').classList.remove('show'); }
+function init(){
+  buildNav(); applyTheme(); navigateTo('dashboard'); startCountdownTick();
+  $('#themeToggle').addEventListener('click',toggleTheme);
+  $('#hamburger').addEventListener('click',openSidebar);
+  $('#backdrop').addEventListener('click',closeSidebar);
+  $('#modalClose').addEventListener('click',closeModal);
+  $('#modalOverlay').addEventListener('click',e=>{if(e.target.id==='modalOverlay')closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+  $('#globalSearch').addEventListener('input',e=>{ globalQuery=e.target.value; if(globalQuery.trim()){ if(currentPage!=='search'){currentPage='search';$('#pageTitle').textContent='Busca';} render('search'); } else { navigateTo('dashboard'); } });
+  if(state.settings.liveQueue){ atualizarTemposDeFila(); startAutoRefresh(); }
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+
+<!--
+====================================================================
+  INTEGRAÇÕES ADICIONADAS:
+  • GOOGLE MAPS: aba Mapa alterna entre "Zonas" (simplificado) e "Google Maps"
+    real via iframe embed (output=embed, sem API key). Cada parque tem lat/lng.
+    Para marcadores/rotas customizados, migrar para Maps JavaScript API (com key).
+  • CLIMA (Open-Meteo, sem key): card no Dashboard + aba "Clima" com atual + 7 dias,
+    troca °C/°F, cache 30 min. Integra com o Plano de Chuva.
+  Demais recursos mantidos: 113 atrações, contador, Queue-Times ao vivo + proxy +
+  auto-refresh 5 min, fila no roteiro, favicon ✨. ATRIBUIÇÃO Queue-Times mantida.
+====================================================================
+-->
+</body>
+</html>
