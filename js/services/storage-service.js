@@ -1,0 +1,4 @@
+import {APP_CONFIG} from '../config.js';import {getSDK} from '../firebase.js';
+export async function uploadPurchaseImage(file,purchaseId){const {sdk,services}=getSDK();if(!sdk) return await asDataUrl(file);if(file.size>5*1024*1024)throw new Error('Imagem acima de 5 MB');const ext=(file.name.split('.').pop()||'jpg').toLowerCase();const path=`trips/${APP_CONFIG.tripId}/purchases/${purchaseId}/product.${ext}`;const ref=sdk.storage.ref(services.storage,path);await sdk.storage.uploadBytes(ref,file,{contentType:file.type});return {imageUrl:await sdk.storage.getDownloadURL(ref),imagePath:path}}
+const asDataUrl=file=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok({imageUrl:r.result,imagePath:''});r.onerror=no;r.readAsDataURL(file)});
+export async function deleteImage(path){if(!path)return;const {sdk,services}=getSDK();if(sdk)await sdk.storage.deleteObject(sdk.storage.ref(services.storage,path))}
